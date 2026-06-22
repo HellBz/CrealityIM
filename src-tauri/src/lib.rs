@@ -93,7 +93,7 @@ fn save_settings(settings: Value) -> Result<(), String> {
 
 #[tauri::command]
 fn show_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
-    let _ = app;
+    let _ = (app, &title, &body);
     #[cfg(target_os = "windows")]
     {
         use std::process::Command;
