@@ -107,6 +107,16 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
             src-tauri/target/${{ matrix.target }}/release/creality-im-*.exe
 
+      - name: Package macOS app bundle
+        if: matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          APP=$(ls src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app 2>/dev/null | head -1)
+          if [ -n "$APP" ]; then
+            zip -r "CrealityIM-$VERSION-${{ matrix.name }}.zip" "$APP"
+          fi
+
       - name: Upload macOS artifacts
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
@@ -115,7 +125,7 @@ jobs:
           if-no-files-found: warn
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
+            CrealityIM-*-${{ matrix.name }}.zip
 
       - name: Upload Linux artifacts
         if: matrix.os == 'ubuntu-22.04'
