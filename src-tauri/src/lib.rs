@@ -89,29 +89,40 @@ fn save_settings(settings: Value) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-// ── Native Notifications via WinRT (kein PowerShell) ──
+// ── Native Notifications via WinRT ──
 
 #[tauri::command]
 fn show_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
     let _ = app;
     #[cfg(target_os = "windows")]
     {
-        use tauri_winrt_notification::{Toast, Duration};
-        // Installiert → eigene App-ID mit Icon; sonst POWERSHELL_APP_ID als Fallback
+        use std::process::Command;
+        use std::os::windows::process::CommandExt;
+        // Installiert → eigene App-ID; sonst PowerShell-ID als Fallback
         let own_id = "CrealityIM";
         let app_id = if winreg::RegKey::predef(winreg::enums::HKEY_CURRENT_USER)
             .open_subkey(format!("SOFTWARE\\Classes\\AppUserModelId\\{}", own_id))
             .is_ok()
         {
-            own_id
+            own_id.to_string()
         } else {
-            Toast::POWERSHELL_APP_ID
+            "Windows PowerShell".to_string()
         };
-        let _ = Toast::new(app_id)
-            .title(&title)
-            .text1(&body)
-            .duration(Duration::Short)
-            .show();
+        let title_esc = title.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;");
+        let body_esc = body.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;");
+        let xml = format!(
+            r#"<toast><visual><binding template="ToastGeneric"><text>{}</text><text>{}</text></binding></visual></toast>"#,
+            title_esc, body_esc
+        );
+        let script = format!(
+            r#"$null=[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime];$null=[Windows.Data.Xml.Dom.XmlDocument,Windows.Data.Xml.Dom.XmlDocument,ContentType=WindowsRuntime];$x=[Windows.Data.Xml.Dom.XmlDocument]::new();$x.LoadXml($env:TOAST_XML);[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{}').Show([Windows.UI.Notifications.ToastNotification]::new($x))"#,
+            app_id
+        );
+        let _ = Command::new("powershell")
+            .args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", &script])
+            .env("TOAST_XML", &xml)
+            .creation_flags(0x08000000)
+            .spawn();
     }
     Ok(())
 }
