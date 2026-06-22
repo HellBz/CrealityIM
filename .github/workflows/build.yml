@@ -18,6 +18,12 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             name: windows-x64
+          - os: windows-latest
+            target: i686-pc-windows-msvc
+            name: windows-x86
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            name: windows-arm64
           - os: macos-latest
             target: x86_64-apple-darwin
             name: macos-intel
@@ -27,6 +33,9 @@ jobs:
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             name: linux-x64
+          - os: ubuntu-22.04
+            target: aarch64-unknown-linux-gnu
+            name: linux-arm64
 
     runs-on: ${{ matrix.os }}
     name: Build ${{ matrix.name }}
@@ -54,7 +63,8 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
-            libsecret-1-dev
+            libsecret-1-dev \
+            gcc-aarch64-linux-gnu
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -112,7 +122,7 @@ jobs:
         shell: bash
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          APP=$(ls src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app 2>/dev/null | head -1)
+          APP=$(find src-tauri/target/${{ matrix.target }}/release/bundle/macos -maxdepth 1 -name "*.app" -type d | head -1)
           if [ -n "$APP" ]; then
             zip -r "CrealityIM-$VERSION-${{ matrix.name }}.zip" "$APP"
           fi
