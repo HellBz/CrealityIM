@@ -14,37 +14,44 @@ fn app_data_dir() -> PathBuf {
     dir
 }
 
-// ── Credentials ──
+// ── Credentials (OS Keystore — Windows Credential Manager / macOS Keychain / libsecret) ──
+
+const KEYRING_SERVICE: &str = "CrealityIM";
 
 #[tauri::command]
 fn save_credentials(user_id: String, token: String, email: String) -> Result<(), String> {
-    let path = app_data_dir().join("login.json");
-    let data = json!({"user_id": user_id, "token": token, "email": email});
-    std::fs::write(&path, serde_json::to_string_pretty(&data).unwrap())
+    let data = json!({"user_id": user_id, "token": token, "email": email}).to_string();
+    keyring::Entry::new(KEYRING_SERVICE, "credentials")
+        .map_err(|e| e.to_string())?
+        .set_password(&data)
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn load_credentials() -> Result<Value, String> {
-    let path = app_data_dir().join("login.json");
-    if !path.exists() {
-        return Ok(Value::Null);
-    }
-    let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let v: Value = serde_json::from_str(&content).unwrap_or(Value::Null);
-    if v.get("user_id").and_then(|x| x.as_str()).map(|s| !s.is_empty()).unwrap_or(false)
-        && v.get("token").and_then(|x| x.as_str()).map(|s| !s.is_empty()).unwrap_or(false)
-    {
-        Ok(v)
-    } else {
-        Ok(Value::Null)
+    let entry = keyring::Entry::new(KEYRING_SERVICE, "credentials")
+        .map_err(|e| e.to_string())?;
+    match entry.get_password() {
+        Ok(data) => {
+            let v: Value = serde_json::from_str(&data).unwrap_or(Value::Null);
+            if v.get("user_id").and_then(|x| x.as_str()).map(|s| !s.is_empty()).unwrap_or(false)
+                && v.get("token").and_then(|x| x.as_str()).map(|s| !s.is_empty()).unwrap_or(false)
+            {
+                Ok(v)
+            } else {
+                Ok(Value::Null)
+            }
+        }
+        Err(_) => Ok(Value::Null),
     }
 }
 
 #[tauri::command]
 fn delete_credentials() -> Result<(), String> {
-    let path = app_data_dir().join("login.json");
-    std::fs::write(&path, "{}").map_err(|e| e.to_string())
+    let entry = keyring::Entry::new(KEYRING_SERVICE, "credentials")
+        .map_err(|e| e.to_string())?;
+    let _ = entry.delete_credential();
+    Ok(())
 }
 
 // ── User Cache ──

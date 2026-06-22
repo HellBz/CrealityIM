@@ -53,7 +53,8 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            libsecret-1-dev
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -63,6 +64,14 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Set version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" src-tauri/tauri.conf.json
+          echo "Building version $VERSION"
 
       - name: Build
         run: npm run tauri build -- --target ${{ matrix.target }}
