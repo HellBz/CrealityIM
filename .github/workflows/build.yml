@@ -70,7 +70,13 @@ jobs:
         shell: bash
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" src-tauri/tauri.conf.json
+          node -e "
+            const fs = require('fs');
+            const f = 'src-tauri/tauri.conf.json';
+            const c = JSON.parse(fs.readFileSync(f,'utf8'));
+            c.version = '$VERSION';
+            fs.writeFileSync(f, JSON.stringify(c, null, 2));
+          "
           echo "Building version $VERSION"
 
       - name: Build
