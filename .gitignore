@@ -1,0 +1,15 @@
+# Rust/Tauri build output
+src-tauri/target/
+node_modules/
+
+# Lokale Nutzerdaten (werden zur Laufzeit erstellt)
+*.credentials
+*.cache
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

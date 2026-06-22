@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="color-scheme" content="dark">
+<title>Creality Cloud IM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  :root {
+    --bg:#0a0a0a; --bg2:#111; --bg3:#1a1a1a; --border:#222;
+    --green:#00c853; --green2:#00e676; --greendim:#00c85322;
+    --text:#f0f0f0; --muted:#666; --muted2:#444;
+    --red:#ff5252;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html { background:#0a0a0a; color-scheme:dark; }
+  body { font-family:'Inter','Segoe UI',sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; -webkit-user-select:none; overflow:hidden; }
+
+  /* ── Login ── */
+  #login-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; gap:14px; }
+  .logo { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+  .logo svg { width:36px; height:36px; }
+  .logo h1 { font-size:22px; font-weight:700; } .logo h1 span { color:var(--green); }
+  #login-screen input { width:340px; padding:11px 16px; background:var(--bg2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:14px; font-family:inherit; }
+  #login-screen input:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 2px var(--greendim); }
+  #loginBtn { width:340px; padding:12px; background:var(--green); border:none; border-radius:6px; color:#000; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
+  #loginBtn:hover { background:var(--green2); }
+  #loginBtn:disabled { background:var(--muted2); color:#666; cursor:not-allowed; }
+  .loginErr { color:var(--red); font-size:13px; min-height:18px; }
+  .savedHint { color:var(--muted); font-size:12px; cursor:pointer; text-decoration:underline; }
+  .savedHint:hover { color:var(--text); }
+
+  /* ── App Layout ── */
+  #app { display:none; flex:1; flex-direction:row; height:100vh; overflow:hidden; }
+
+  /* ── Sidebar ── */
+  #sidebar { width:290px; background:var(--bg2); border-right:1px solid var(--border); display:flex; flex-direction:column; }
+  #sidebar-header { padding:13px 14px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+  #my-avatar { width:36px; height:36px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; color:#000; flex-shrink:0; overflow:hidden; }
+  #my-avatar img { width:36px; height:36px; border-radius:50%; object-fit:cover; }
+  .userInfo { flex:1; min-width:0; }
+  #my-name { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #my-status { background:transparent; border:none; color:var(--green); font-size:11px; cursor:pointer; font-family:inherit; padding:0; margin-top:2px; }
+  #my-status option { background:var(--bg2); }
+  #my-status.away { color:#ff9800; } #my-status.invisible { color:#777; }
+  #btn-notify { background:none; border:none; font-size:18px; cursor:pointer; padding:0 4px; opacity:0.9; }
+  #btn-logout { background:none; border:1px solid var(--border); color:var(--muted); padding:4px 8px; border-radius:4px; cursor:pointer; font-size:11px; font-family:inherit; }
+  #btn-logout:hover { border-color:var(--red); color:var(--red); }
+  #search-box { padding:9px 12px; border-bottom:1px solid var(--border); }
+  #search-input { width:100%; padding:7px 12px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; font-family:inherit; }
+  #search-input:focus { outline:none; border-color:var(--green); }
+  #search-results { background:var(--bg2); border-bottom:1px solid var(--border); max-height:280px; overflow-y:auto; display:none; flex-direction:column; }
+  .search-hdr { padding:6px 14px; font-size:11px; color:var(--muted); background:var(--bg); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; }
+  .search-hdr span { cursor:pointer; color:var(--green); }
+  .search-item { display:flex; align-items:center; gap:10px; padding:9px 14px; cursor:pointer; border-bottom:1px solid var(--border); transition:background .1s; }
+  .search-item:hover { background:var(--bg3); }
+  #contact-list { flex:1; overflow-y:auto; }
+  .contact-item { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; border-bottom:1px solid var(--border); transition:background .1s; }
+  .contact-item:hover { background:var(--bg3); }
+  .contact-item.active { background:var(--greendim); border-left:2px solid var(--green); }
+  .c-avatar { width:40px; height:40px; border-radius:50%; background:var(--bg3); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; overflow:hidden; }
+  .c-avatar img { width:40px; height:40px; border-radius:50%; object-fit:cover; }
+  .c-info { flex:1; min-width:0; }
+  .c-name { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .c-preview { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+  .c-meta { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+  .c-time { font-size:10px; color:var(--muted2); }
+  .badge { background:var(--green); color:#fff; border-radius:10px; min-width:18px; height:18px; padding:0 5px; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+
+  /* ── Chat ── */
+  #chat-area { flex:1; display:flex; flex-direction:column; background:var(--bg); }
+  #chat-header { padding:13px 18px; background:var(--bg2); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+  #empty-chat { flex:1; display:flex; align-items:center; justify-content:center; color:var(--muted2); flex-direction:column; gap:8px; font-size:14px; }
+  #active-chat { display:none; flex:1; flex-direction:column; min-height:0; overflow:hidden; }
+  #chat-messages { flex:1; overflow-y:scroll; padding:18px; display:flex; flex-direction:column; gap:12px; min-height:0; }
+  .msg-row { display:flex; gap:8px; max-width:70%; }
+  .msg-row.own { align-self:flex-end; flex-direction:row-reverse; }
+  .msg-avatar { width:32px; height:32px; border-radius:50%; background:var(--bg3); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; overflow:hidden; }
+  .msg-avatar img { width:32px; height:32px; border-radius:50%; object-fit:cover; }
+  .msg-c { display:flex; flex-direction:column; gap:3px; }
+  .msg-row.own .msg-c { align-items:flex-end; }
+  .msg-sender { font-size:10px; color:var(--muted); }
+  .bubble { position:relative; padding:8px 13px; border-radius:14px; font-size:13px; line-height:1.5; background:var(--bg2); border:1px solid var(--border); word-break:break-word; margin-left:10px; }
+  .bubble::before { content:''; position:absolute; top:12px; left:-7px; width:0; height:0; border-top:5px solid transparent; border-bottom:5px solid transparent; border-right:7px solid var(--border); }
+  .bubble::after { content:''; position:absolute; top:13px; left:-5px; width:0; height:0; border-top:4px solid transparent; border-bottom:4px solid transparent; border-right:5px solid var(--bg2); }
+  .msg-row.own .bubble { background:var(--green); color:#000; border-color:var(--green); font-weight:500; margin-left:0; margin-right:10px; border-radius:14px; }
+  .msg-row.own .bubble::before { left:auto; right:-7px; border-right:none; border-left:7px solid var(--green); }
+  .msg-row.own .bubble::after { left:auto; right:-5px; border-right:none; border-left:5px solid var(--green); }
+  .bubble-time { font-size:10px; color:var(--muted2); display:flex; align-items:center; gap:4px; }
+  .msg-del-btn { display:none; background:none; border:none; cursor:pointer; font-size:11px; padding:0; opacity:0.5; }
+  .msg-del-btn:hover { opacity:1; }
+  .msg-row:hover .msg-del-btn { display:inline; }
+  .model-card { display:flex; gap:10px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:10px; max-width:260px; cursor:pointer; transition:background .1s; }
+  .model-card:hover { background:var(--bg2); }
+  .model-card img { width:64px; height:64px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+  .mc-info { display:flex; flex-direction:column; justify-content:center; gap:4px; min-width:0; }
+  .mc-name { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mc-tag { font-size:10px; color:var(--green); font-weight:600; }
+  /* Modell-Karte in eigener (grüner) Bubble */
+  .msg-row.own .bubble .model-card { background:rgba(0,0,0,0.15); border-color:rgba(0,0,0,0.2); }
+  .msg-row.own .bubble .model-card:hover { background:rgba(0,0,0,0.25); }
+  .msg-row.own .bubble .mc-name { color:#000; }
+  .msg-row.own .bubble .mc-tag { color:rgba(0,0,0,0.6); }
+  .msg-row.own .bubble .model-card div[style*="font-size:10px"] { color:rgba(0,0,0,0.5) !important; }
+  .msg-row.own .bubble .model-card > div:first-child { background:rgba(0,0,0,0.1) !important; }
+  #chat-input-area { padding:12px 18px; background:var(--bg2); border-top:1px solid var(--border); display:flex; gap:8px; align-items:flex-end; }
+  #msg-input { flex:1; padding:9px 13px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; resize:none; max-height:100px; font-family:inherit; }
+  #msg-input:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 2px var(--greendim); }
+  #btn-send { padding:9px 18px; background:var(--green); border:none; border-radius:8px; color:#000; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  #btn-send:hover { background:var(--green2); }
+  #status-bar { padding:3px 14px; background:var(--bg); border-top:1px solid var(--border); font-size:10px; color:var(--muted); display:flex; gap:14px; align-items:center; }
+  #ws-status { color:var(--red); } #ws-status.on { color:var(--green); }
+
+  /* ── Model Dialog ── */
+  #model-dialog { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; align-items:center; justify-content:center; }
+  #model-dialog.open { display:flex; }
+  #model-box { background:var(--bg2); border-radius:14px; width:480px; max-height:600px; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--border); }
+  #model-box-header { padding:14px 16px; font-weight:600; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  #model-search-row { display:flex; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); }
+  #model-search-input { flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:13px; font-family:inherit; }
+  #model-search-input:focus { outline:none; border-color:var(--green); }
+  #model-results { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:6px; }
+  .model-result { display:flex; align-items:center; gap:10px; padding:8px; border-radius:8px; cursor:pointer; transition:background .15s; }
+  .model-result:hover { background:var(--bg3); }
+  .model-result img { width:56px; height:56px; object-fit:cover; border-radius:6px; flex-shrink:0; background:var(--bg3); }
+  .model-result-info { flex:1; overflow:hidden; }
+  .model-result-name { font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .model-result-cat { font-size:11px; color:var(--muted); margin-top:2px; }
+
+  .loading { text-align:center; color:var(--muted); padding:16px; font-size:12px; }
+  ::-webkit-scrollbar { width:3px; } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  input, textarea { -webkit-user-select:text; user-select:text; }
+
+  /* ── Lightbox ── */
+  #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:9999; flex-direction:column; align-items:center; justify-content:center; gap:12px; cursor:zoom-out; }
+  #lightbox.open { display:flex; }
+  #lightbox img { max-width:90vw; max-height:80vh; border-radius:8px; object-fit:contain; cursor:default; box-shadow:0 0 40px rgba(0,0,0,0.8); }
+  #lightbox-bar { display:flex; gap:12px; align-items:center; }
+  #lightbox-bar a { color:var(--green); font-size:13px; font-weight:600; text-decoration:none; padding:6px 14px; border:1px solid var(--green); border-radius:6px; }
+  #lightbox-bar a:hover { background:var(--greendim); }
+  #lightbox-close { background:none; border:none; color:var(--muted); font-size:24px; cursor:pointer; padding:0 8px; line-height:1; }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="logo">
+    <svg viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#00c853"/><path d="M10 18a8 8 0 1 1 16 0" stroke="#000" stroke-width="2.5" stroke-linecap="round"/><circle cx="18" cy="18" r="3" fill="#000"/></svg>
+    <h1>Creality <span>Cloud</span> IM</h1>
+  </div>
+  <p style="color:var(--muted);font-size:13px;">Sign in with your Creality account</p>
+  <button id="btn-oauth-login" style="width:340px;background:var(--green);color:#000;font-weight:700;font-size:14px;padding:11px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;margin-bottom:2px;">
+    🔐 Sign in with Creality
+  </button>
+  <div style="display:flex;align-items:center;gap:8px;margin:2px 0;width:340px;">
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+    <span style="color:var(--muted2);font-size:11px;">or manual</span>
+    <div style="flex:1;height:1px;background:var(--border);"></div>
+  </div>
+  <input type="text" id="inp-uid" placeholder="User ID" />
+  <input type="password" id="inp-token" placeholder="Creality Token" style="font-size:11px;" />
+  <p class="loginErr" id="login-err"></p>
+  <button id="loginBtn">Connect</button>
+  <p class="savedHint" id="saved-hint" style="display:none"></p>
+  <label style="display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted2);font-size:12px;cursor:pointer;margin-top:4px;">
+    <input type="checkbox" id="chk-auto-login" style="cursor:pointer;width:14px;height:14px;"/>
+    Auto-login on startup
+  </label>
+  <p style="color:var(--muted2);font-size:11px;margin-top:4px;text-align:center;">Credentials stored in: %APPDATA%\CrealityIM\</p>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <div id="my-avatar">?</div>
+      <div class="userInfo">
+        <div id="my-name">...</div>
+        <select id="my-status">
+          <option value="Online">🟢 Online</option>
+          <option value="Away">🟠 Away</option>
+          <option value="Invisible">⚪ Invisible</option>
+        </select>
+      </div>
+      <button id="btn-notify" title="Notifications">🔔</button>
+      <button id="btn-logout">Logout</button>
+    </div>
+    <div id="search-box">
+      <input id="search-input" placeholder="Filter chats / search users..." />
+    </div>
+    <div id="contact-list"><div class="loading">Connecting...</div></div>
+  </div>
+  <div id="chat-area">
+    <div id="empty-chat"><span style="font-size:40px">💬</span><span>Select a chat</span></div>
+    <div id="active-chat">
+      <div id="chat-header">
+        <div id="chat-header-avatar" class="c-avatar" style="width:36px;height:36px;font-size:14px;flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:14px;" id="chat-header-name"></div>
+          <div style="font-size:11px;color:var(--muted);" id="chat-header-sub"></div>
+        </div>
+        <button id="btn-reload-chat" title="Reload messages" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px 6px;border-radius:4px;" onclick="reloadMessages()">🔄</button>
+      </div>
+      <div id="chat-messages"></div>
+      <div id="chat-input-area">
+        <button id="btn-model" title="Share last viewed model" style="background:none;border:none;font-size:20px;cursor:pointer;padding:0 4px;color:var(--muted);flex-shrink:0;">📦</button>
+        <textarea id="msg-input" rows="1" placeholder="Message..."></textarea>
+        <button id="btn-send">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="status-bar" style="display:none">
+  <span id="ws-status">● Disconnected</span>
+  <span id="ws-detail"></span>
+  <span id="status-msg"></span>
+  <button id="btn-reconnect" style="display:none;margin-left:8px;padding:2px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--green);font-size:11px;cursor:pointer;font-family:inherit;" onclick="reconnectWS()">↺ Reconnect</button>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()"/>
+  <div id="lightbox-bar" onclick="event.stopPropagation()">
+    <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+    <a id="lightbox-link" href="#" target="_blank">🔗 Im Browser öffnen</a>
+  </div>
+</div>
+
+<!-- Model Dialog -->
+<div id="model-dialog">
+  <div id="model-box">
+    <div id="model-box-header">
+      <span>Modell teilen</span>
+      <span id="model-status" style="color:var(--muted);font-size:12px;font-weight:normal"></span>
+      <button onclick="closeModelDialog()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div id="model-search-row">
+      <input id="model-search-input" placeholder="Modell suchen...">
+      <button onclick="doModelSearch()" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px;">🔍</button>
+    </div>
+    <div id="model-results"></div>
+  </div>
+</div>
+
+<script type="module">
+import { invoke } from 'https://unpkg.com/@tauri-apps/api@2/core';
+import { listen } from 'https://unpkg.com/@tauri-apps/api@2/event';
+function openLink(url) {
+  if (!url || url === '#') return;
+  invoke('open_url', { url }).catch(() => { window.open(url, '_blank'); });
+}
+function openLightbox(url) {
+  $('lightbox-img').src = url;
+  $('lightbox-link').href = url;
+  $('lightbox-link').onclick = e => { e.preventDefault(); openLink(url); };
+  $('lightbox').classList.add('open');
+}
+function closeLightbox() {
+  $('lightbox').classList.remove('open');
+  $('lightbox-img').src = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+window.openLightbox = openLightbox;
+window.closeLightbox = closeLightbox;
+window.openLink = openLink;
+window.downloadFile = async (url, filename) => {
+  setStatusMsg(`⬇ Downloading ${filename}...`);
+  try {
+    const result = await invoke('download_file', { url, filename });
+    if (result.startsWith('cached:')) {
+      setStatusMsg(`📁 Already cached: ${result.slice(7)}`);
+    } else {
+      setStatusMsg(`✓ Saved: ${result.slice(6)}`);
+    }
+  } catch(e) {
+    setStatusMsg('Download failed: ' + e, true);
+  }
+};
+
+// ── Tencent IM Konstanten (identisch zur Python-App) ──
+const SDKAPPID    = 1721003041;
+const WEBSDKAPPID = 537048168;
+const PLATFORM    = 7;
+const SDKVERSION  = '1.7.3';
+
+// ── State ──
+let myToken = '', myUid = '', myUserSig = '', myA2 = '', myTinyId = '', statusInstId = 0;
+let contacts = [], activeContact = null, userCache = {}, cacheDirty = false;
+let notificationsOn = true, notifiedMsgs = new Set();
+let wsSeq = Math.floor(Math.random() * 1e7);
+let ws = null, hbTimer = null;
+let pendingUnread = {};
+let msgLastMsgTime = 0, msgLastMsgKey = '', msgComplete = true, msgLoadingMore = false, msgIsPrepend = false;
+
+const $ = id => document.getElementById(id);
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000);
+  const now = new Date();
+  const diffH = (now - d) / 3600000;
+  if (diffH < 24 && d.getDate() === now.getDate()) return d.toLocaleTimeString('de', {hour:'2-digit', minute:'2-digit'});
+  if (diffH < 24 * 7) return d.toLocaleDateString('de', {weekday:'short'}) + ' ' + d.toLocaleTimeString('de', {hour:'2-digit', minute:'2-digit'});
+  return d.toLocaleDateString('de', {day:'2-digit', month:'2-digit'}) + ' ' + d.toLocaleTimeString('de', {hour:'2-digit', minute:'2-digit'});
+}
+function initials(n) { return (n||'?')[0].toUpperCase(); }
+function avatarHtml(url, name, size) {
+  if (url) return `<img src="${esc(url)}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover" onerror="this.style.display='none'"/>`;
+  return `<span style="font-size:${Math.floor(size*0.4)}px;font-weight:700">${esc(initials(name))}</span>`;
+}
+function previewText(body) {
+  if (!body) return '';
+  const elems = Array.isArray(body) ? body : [body];
+  const e = elems[0]; if (!e) return '';
+  if (e.MsgType === 'TIMTextElem') return (e.MsgContent?.Text||'').substring(0,40);
+  if (e.MsgType === 'TIMImageElem') return '🖼 Image';
+  if (e.MsgType === 'TIMFileElem') return '📎 File';
+  return '[Message]';
+}
+
+// ── WS direkt im Browser (wie Python-App) ──
+function wsUrl() {
+  return `wss://wsssgp.im.qcloud.com/binfo?sdkappid=${SDKAPPID}&instanceid=${Math.random().toString(36).substr(2)}&random=${Math.random()}&platform=${PLATFORM}&host=windows&version=-1&sdkversion=${SDKVERSION}&compress=none`;
+}
+function wsSend(cmd, body, extraHead = {}) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  const head = {
+    ver: 'v4', platform: PLATFORM, websdkappid: WEBSDKAPPID, websdkversion: SDKVERSION,
+    status_instid: statusInstId, sdkappid: SDKAPPID, contenttype: 'json',
+    reqtime: Math.floor(Date.now()/1000), identifier: myUid, usersig: myUserSig,
+    sdkability: 192371, tjgID: '', servcmd: cmd, seq: wsSeq++,
+    ...(myA2 ? {a2: myA2, tinyid: myTinyId} : {}),
+    ...extraHead
+  };
+  ws.send(new TextEncoder().encode(JSON.stringify({head, body})).buffer);
+}
+async function reconnectWS() {
+  $('btn-reconnect').disabled = true;
+  setWsStatus(false, 'Refreshing token...');
+  try {
+    const r = await invoke('im_login', { token: myToken, userId: myUid, cookieStr: '' });
+    if (r?.code === 0 && r.result?.userSig) {
+      myUserSig = r.result.userSig;
+      connectWS();
+    } else {
+      setWsStatus(false, 'Login failed: ' + (r?.msg || r?.code));
+      $('btn-reconnect').disabled = false;
+    }
+  } catch(e) {
+    setWsStatus(false, 'Error: ' + e);
+    $('btn-reconnect').disabled = false;
+  }
+}
+
+function connectWS() {
+  clearInterval(hbTimer);
+  myA2 = ''; myTinyId = ''; statusInstId = 0;
+
+  const doConnect = () => {
+    ws = new WebSocket(wsUrl());
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = () => {
+      $('btn-reconnect').style.display = 'none';
+      $('btn-reconnect').disabled = false;
+      setWsStatus(true, 'Connected, signing in...');
+      wsSend('im_open_status.wslogin', {State:'Online', is_web_uniapp:0, InstType:0});
+      hbTimer = setInterval(() => wsSend('heartbeat.alive', {}), 25000);
+    };
+    ws.onmessage = e => {
+      const txt = e.data instanceof ArrayBuffer ? new TextDecoder().decode(e.data) : e.data;
+      let data; try { data = JSON.parse(txt); } catch { return; }
+      handleWsMsg(data);
+    };
+    ws.onerror = () => {};
+    ws.onclose = e => {
+      clearInterval(hbTimer);
+      if (!myToken) return;
+      setWsStatus(false, `Disconnected (${e.code})`);
+      $('btn-reconnect').style.display = 'inline-block';
+    };
+  };
+
+  if (ws && ws.readyState !== WebSocket.CLOSED) {
+    ws.onclose = null; ws.onerror = null; ws.onopen = null; ws.onmessage = null;
+    ws.addEventListener('close', doConnect, { once: true });
+    ws.close();
+  } else {
+    doConnect();
+  }
+}
+
+// ── Startup ──
+async function init() {
+  const settings = await invoke('get_settings').catch(() => ({notifications:true,auto_login:true}));
+  notificationsOn = settings.notifications !== false;
+  $('btn-notify').textContent = notificationsOn ? '🔔' : '🔕';
+  $('chk-auto-login').checked = settings.auto_login !== false;
+
+  const cache = await invoke('load_user_cache').catch(() => ({}));
+  if (cache && typeof cache === 'object') {
+    Object.entries(cache).forEach(([k, v]) => {
+      if (/^\d+$/.test(k) && v?.nickName) userCache[k] = { nickName: v.nickName, userAvatar: v.userAvatar || '' };
+    });
+  }
+
+  const creds = await invoke('load_credentials').catch(() => null);
+  if (creds && creds.user_id) {
+    $('inp-uid').value = creds.user_id;
+    $('saved-hint').style.display = 'block';
+    $('saved-hint').textContent = `Gespeichert: ${creds.email || creds.user_id} – Klicken für Auto-Login`;
+    if (settings.auto_login !== false) doAutoLogin(creds);
+  }
+}
+init();
+
+$('saved-hint').onclick = async () => {
+  const creds = await invoke('load_credentials').catch(() => null);
+  if (creds) doAutoLogin(creds);
+};
+
+$('chk-auto-login').onchange = e => {
+  invoke('get_settings').then(s => invoke('save_settings', { settings: {...s, auto_login: e.target.checked} })).catch(()=>{});
+};
+
+async function doAutoLogin(creds) {
+  setErr('Auto-Login...');
+  $('loginBtn').disabled = true;
+  try {
+    const r = await invoke('im_login', { token: creds.token, userId: creds.user_id, cookieStr: '' });
+    $('loginBtn').disabled = false;
+    if (r?.code === 0 && r.result?.userSig) {
+      setErr('');
+      startApp(creds.token, creds.user_id, r.result.userSig);
+    } else {
+      await invoke('delete_credentials').catch(()=>{});
+      setErr('Auto-login failed – please sign in manually');
+    }
+  } catch(e) {
+    $('loginBtn').disabled = false;
+    setErr('Error: ' + e);
+  }
+}
+
+// ── OAuth Login ──
+$('btn-oauth-login').onclick = async () => {
+  $('btn-oauth-login').disabled = true;
+  $('btn-oauth-login').textContent = '⏳ Waiting for login...';
+  setErr('');
+  try {
+    await invoke('oauth_login_window');
+  } catch(e) {
+    setErr('Error: ' + e);
+    $('btn-oauth-login').disabled = false;
+    $('btn-oauth-login').textContent = '🔐 Sign in with Creality';
+  }
+};
+
+// OAuth Login Handler - wird sowohl per eval als auch per Event aufgerufen
+async function _oauthHandleToken(token, userId) {
+  $('btn-oauth-login').disabled = false;
+  $('btn-oauth-login').textContent = '🔐 Sign in with Creality';
+  if (!token) { setErr('No token received'); return; }
+  setErr('Signed in, loading data...');
+  try {
+    const r = await invoke('im_login', { token, userId: userId || '', cookieStr: '' });
+    if (r?.code === 0 && r.result?.userSig) {
+      const uid = r.result?.imUserInfoVO?.userId ? String(r.result.imUserInfoVO.userId) : userId;
+      await invoke('save_credentials', { userId: uid, token, email: '' }).catch(()=>{});
+      setErr('');
+      startApp(token, uid, r.result.userSig);
+    } else {
+      setErr('IM login failed (code=' + r?.code + '): ' + (r?.msg || JSON.stringify(r)));
+    }
+  } catch(e) {
+    setErr('Error: ' + e);
+  }
+}
+window._oauthLogin = _oauthHandleToken;
+
+// Empfange Token vom OAuth-Fenster (Event-Fallback)
+listen('oauth_token', async (event) => {
+  const { token, userId } = event.payload;
+  await _oauthHandleToken(token, userId);
+});
+
+$('loginBtn').onclick = async () => {
+  const uid   = $('inp-uid').value.trim();
+  const token = $('inp-token').value.trim();
+  if (!uid || !token) { setErr('User ID and Token required'); return; }
+  setErr('Connecting...');
+  $('loginBtn').disabled = true;
+  try {
+    const r = await invoke('im_login', { token, userId: uid, cookieStr: '' });
+    $('loginBtn').disabled = false;
+    if (r?.code === 0 && r.result?.userSig) {
+      await invoke('save_credentials', { userId: uid, token, email: '' }).catch(()=>{});
+      setErr('');
+      startApp(token, uid, r.result.userSig);
+    } else {
+      setErr((r?.msg) || 'Login failed');
+    }
+  } catch(e) {
+    $('loginBtn').disabled = false;
+    setErr('Error: ' + e);
+  }
+};
+
+function setErr(msg) { $('login-err').textContent = msg; }
+
+// ── App Start ──
+async function startApp(token, uid, userSig) {
+  myToken = token; myUid = uid; myUserSig = userSig;
+  myA2 = ''; myTinyId = ''; statusInstId = 0; wsSeq = Math.floor(Math.random()*1e7);
+
+  $('login-screen').style.display = 'none';
+  $('app').style.display = 'flex';
+  $('status-bar').style.display = 'flex';
+
+  connectWS();
+  loadMyInfo();
+  $('my-status').onchange = () => setStatus($('my-status').value);
+}
+
+async function loadMyInfo() {
+  if (userCache[myUid]?.nickName) {
+    $('my-name').textContent = userCache[myUid].nickName;
+    setAvatarEl($('my-avatar'), userCache[myUid].userAvatar, userCache[myUid].nickName, 36);
+  }
+  try {
+    const r = await invoke('get_user_info', { token: myToken, myUid, targetUid: myUid });
+    const info = r?.result || r?.result?.userInfo || {};
+    const nick = info.nickName || info.userName || myUid;
+    const av = info.faceUrl || info.userAvatar || '';
+    userCache[myUid] = { nickName: nick, userAvatar: av };
+    cacheDirty = true;
+    $('my-name').textContent = nick;
+    setAvatarEl($('my-avatar'), av, nick, 36);
+  } catch {}
+}
+
+function setAvatarEl(el, url, name, size) {
+  if (url) el.innerHTML = `<img src="${esc(url)}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover"/>`;
+  else { el.innerHTML = ''; el.textContent = initials(name); }
+}
+
+// ── WS Message Handler ──
+function handleWsMsg(data) {
+  const cmd = data?.head?.servcmd;
+  if (!cmd) return;
+
+  if (cmd === 'im_open_status.wslogin') {
+    if (data.head.retcode === 0 && data.body?.ErrorCode === 0) {
+      myA2 = data.body.A2Key || '';
+      myTinyId = data.body.TinyId || '';
+      statusInstId = data.body.InstId || 0;
+      setWsStatus(true, 'Signed in ✓');
+      loadContacts();
+      wsSend('openim.getmsg', {Cookie:'',SyncFlag:0,NeedAbstract:1,IsOnlineSync:0,NeedSignaling:1});
+    } else {
+      setWsStatus(false, 'WS login failed: ' + (data.body?.ErrorInfo || ''));
+    }
+  }
+  else if (cmd === 'recentcontact.page_get') {
+    renderContactsFromWs(data.body);
+    // Zwischengespeicherte Unread-Counts anwenden
+    let dirty = false;
+    Object.entries(pendingUnread).forEach(([id, count]) => {
+      const c = contacts.find(x => String(x.id) === id);
+      if (c) { c.unread = Math.max(c.unread, count); dirty = true; delete pendingUnread[id]; }
+    });
+    if (dirty) displayContacts(contacts);
+  }
+  else if (cmd === 'openim.getmsg') {
+    (data.body?.C2CPairUnreadCount || []).forEach(({From_Account, UnreadCount}) => {
+      if (UnreadCount <= 0) return;
+      const c = contacts.find(x => String(x.id) === String(From_Account));
+      if (c) { c.unread = UnreadCount; displayContacts(contacts); }
+      else { pendingUnread[String(From_Account)] = UnreadCount; } // noch nicht geladen
+    });
+  }
+  else if (cmd === 'openim.getroammsg' || cmd === 'group.get_group_roam_msg') {
+    const prepend = msgIsPrepend;
+    msgIsPrepend = false;
+    renderMessages(data.body, prepend);
+  }
+  else if (cmd === 'im_open_push.msg_push') {
+    if (data.body?.NeedAck) wsSend('im_open_push.msg_push_ack', {SessionData: data.body.SessionData});
+    const events = data.body?.EventArray || [];
+    events.forEach(ev => {
+      const msgs = ev.C2cMsgArray || ev.GroupMsgArray || [];
+      msgs.forEach(msg => {
+        const fromId = String(msg.From_Account || '');
+        const fromName = msg.From_AccountNick || fromId;
+        const text = (msg.MsgBody||[]).map(b =>
+          b.MsgContent?.Text || (b.MsgType==='TIMImageElem'?'[Image]':b.MsgType==='TIMFileElem'?'[File]':'')
+        ).join('') || '';
+        const isOwn = fromId === String(myUid) || msg.IsSyncMsg === 1;
+        const key = `${msg.MsgRandom}-${msg.MsgSeq}`;
+        if (!isOwn && notificationsOn && !notifiedMsgs.has(key)) {
+          notifiedMsgs.add(key);
+          if (notifiedMsgs.size > 200) notifiedMsgs.delete(notifiedMsgs.values().next().value);
+          invoke('show_notification', { title: fromName, body: text || 'New message' }).catch(()=>{});
+        }
+        // Kontakt lokal aktualisieren ohne Server-Roundtrip (verhindert Unread-Reset)
+        const peerId = isOwn ? String(msg.To_Account || '') : fromId;
+        let c = contacts.find(x => String(x.id) === peerId);
+        if (c) {
+          c.preview = text || c.preview;
+          c.time = msg.MsgTimeStamp || c.time;
+          if (!isOwn && (!activeContact || String(activeContact.id) !== peerId)) c.unread = (c.unread || 0) + 1;
+          contacts.sort((a,b) => b.time - a.time);
+          displayContacts(contacts);
+        }
+        if (activeContact && String(activeContact.id) === peerId) {
+          loadMessages(activeContact.id, activeContact.type);
+        }
+      });
+    });
+  }
+  else if (cmd === 'openim.sendmsg') {
+    if (data.head?.retcode === 0) setStatusMsg('Sent ✓');
+    else setStatusMsg('Error: ' + data.head?.retstr, true);
+  }
+  else if (cmd === 'heartbeat.alive') { /* ok */ }
+}
+
+// ── Contacts via WS ──
+function loadContacts() {
+  wsSend('recentcontact.page_get', {
+    From_Account: myUid, TimeStamp: 0, StartIndex: 0,
+    TopTimeStamp: 0, TopStartIndex: 0, OrderType: 1, MsgAssistFlags: 4, AssistFlags: 15
+  });
+}
+
+function renderContactsFromWs(body) {
+  const items = [...(body?.TopContactItem||body?.TopSessionItem||[]), ...(body?.ContactItem||body?.SessionItem||[])];
+  // Manuell gestartete Chats (noch kein WS-Eintrag) merken
+  const manualContacts = contacts.filter(c => !items.some(i => String(i.To_Account||i.GroupId||i.PeerAccount) === String(c.id)));
+  contacts = [];
+  items.forEach(item => {
+    const id = item.To_Account || item.GroupId || item.PeerAccount;
+    if (!id) return;
+    const nick = item.NickName || item.GroupName || '';
+    const face = item.FaceUrl || item.GroupFaceUrl || '';
+    if (nick && !userCache[id]) { userCache[id] = {nickName: nick, userAvatar: face}; cacheDirty = true; }
+    else if (nick && userCache[id] && !userCache[id].nickName) { userCache[id].nickName = nick; userCache[id].userAvatar = face || ''; cacheDirty = true; }
+    const cached = userCache[id] || {};
+    contacts.push({
+      id, type: item.Type === 2 ? 'group' : 'c2c',
+      name: cached.nickName || nick || id,
+      avatar: cached.userAvatar || face || '',
+      preview: previewText(item.MsgContent || item.LastMsg),
+      time: item.MsgTimeStamp || item.LastMsgTime || 0,
+      unread: (() => {
+        const serverCount = item.UnreadMsgCount || item.C2CUnreadNum || item.UnreadMsgNum || 0;
+        const prev = contacts.find(x => String(x.id) === String(id));
+        return serverCount > 0 ? serverCount : (prev?.unread || 0);
+      })()
+    });
+  });
+  // Nach letzter Nachricht sortieren, manuell gestartete Chats oben
+  contacts.sort((a,b) => b.time - a.time);
+  contacts.unshift(...manualContacts);
+  displayContacts(contacts);
+  if (cacheDirty) persistUserCache();
+  contacts.filter(c => c.type === 'c2c' && !userCache[c.id]?.nickName).forEach(c => fetchUserInfo(c.id));
+}
+
+async function fetchUserInfo(userId) {
+  if (userCache[userId]?.nickName) return;
+  try {
+    const r = await invoke('get_user_info', { token: myToken, myUid, targetUid: userId });
+    const info = r?.result || {};
+    userCache[userId] = { nickName: info.nickName || userId, userAvatar: info.faceUrl || '' };
+    cacheDirty = true;
+    const c = contacts.find(x => String(x.id) === String(userId));
+    if (c && info.nickName) { c.name = info.nickName; c.avatar = info.faceUrl || c.avatar; displayContacts(contacts); }
+    clearTimeout(fetchUserInfo._t);
+    fetchUserInfo._t = setTimeout(persistUserCache, 2000);
+  } catch {}
+}
+
+async function persistUserCache() {
+  if (!cacheDirty) return;
+  cacheDirty = false;
+  await invoke('save_user_cache', { cache: userCache }).catch(()=>{});
+}
+
+function displayContacts(list) {
+  const el = $('contact-list');
+  if (!list.length) { el.innerHTML = '<div class="loading">No chats</div>'; return; }
+  el.innerHTML = list.map(c => `
+    <div class="contact-item${activeContact?.id === c.id ? ' active' : ''}" onclick="openChatById('${esc(String(c.id))}')">
+      <div class="c-avatar">${avatarHtml(c.avatar, c.name, 40)}</div>
+      <div class="c-info">
+        <div class="c-name">${esc(c.name)}</div>
+        <div class="c-preview">${esc(c.preview)}</div>
+      </div>
+      <div class="c-meta">
+        <div class="c-time">${fmtTime(c.time)}</div>
+        ${c.unread > 0 ? `<div class="badge">${c.unread}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+window.openChatById = id => {
+  const c = contacts.find(x => String(x.id) === String(id));
+  if (c) openChat(c);
+};
+
+// ── Nutzersuche ──
+let _searchQ = '';
+$('search-input').oninput = e => {
+  _searchQ = e.target.value;
+  if (!_searchQ) {
+    displayContacts(contacts);
+    return;
+  }
+  // Lokale Kontakte sofort filtern — direkt in Kontaktliste, kein Panel
+  const q = _searchQ.toLowerCase();
+  const local = contacts.filter(c => c.name.toLowerCase().includes(q) || String(c.id).includes(q));
+  // Kontaktliste + "Extern suchen" Button am Ende
+  displayContactsWithExternalBtn(local, _searchQ);
+};
+
+function displayContactsWithExternalBtn(list, q) {
+  renderContactListWithExtern(list, q, '');
+}
+
+async function doExternalSearch() {
+  const q = _searchQ.trim();
+  if (!q || q.length < 2) return;
+  // Lokale Liste + Button + Lade-Indikator
+  const local = contacts.filter(c => c.name.toLowerCase().includes(q.toLowerCase()) || String(c.id).includes(q));
+  renderContactListWithExtern(local, q, `<div class="loading" style="font-size:11px;">Searching...</div>`);
+  try {
+    const r = await invoke('search_users', { token: myToken, uid: myUid, keyword: q });
+    let list = (r?.result?.list || []).filter(u =>
+      !contacts.some(c => String(c.id) === String(u.userId))
+    );
+    if (list.length === 0 && /^\d+$/.test(q)) {
+      try {
+        const ri = await invoke('get_user_info', { token: myToken, myUid, targetUid: q });
+        const info = ri?.result;
+        if (info?.nickName) list = [{ userId: q, nickName: info.nickName, userAvatar: info.faceUrl||'' }];
+      } catch {}
+    }
+    const extHtml = list.length === 0
+      ? `<div class="loading" style="font-size:11px;">No users found</div>`
+      : list.map(u => {
+          const name = (u.nickName||'').replace(/<\/?em>/g,'');
+          return `<div class="contact-item" onclick="openSearchContact('${esc(String(u.userId))}','${esc(name)}','${esc(u.userAvatar||'')}')">
+            <div class="c-avatar">${avatarHtml(u.userAvatar, name, 40)}</div>
+            <div class="c-info"><div class="c-name">${esc(name)}</div><div class="c-preview">ID: ${esc(String(u.userId))}</div></div>
+            <div style="color:var(--green);font-size:11px;font-weight:600;">+ Chat</div>
+          </div>`;
+        }).join('');
+    renderContactListWithExtern(local, q, extHtml);
+  } catch(e) {
+    renderContactListWithExtern(local, q, `<div style="padding:6px 14px;color:var(--red);font-size:11px;">${esc(String(e))}</div>`);
+  }
+}
+window.doExternalSearch = doExternalSearch;
+
+function renderContactListWithExtern(local, q, extHtml) {
+  const localHtml = local.map(c => `
+    <div class="contact-item${activeContact?.id === c.id ? ' active' : ''}" onclick="openChatById('${esc(String(c.id))}')">  
+      <div class="c-avatar">${avatarHtml(c.avatar, c.name, 40)}</div>
+      <div class="c-info"><div class="c-name">${esc(c.name)}</div><div class="c-preview">${esc(c.preview)}</div></div>
+      <div class="c-meta"><div class="c-time">${fmtTime(c.time)}</div>${c.unread > 0 ? `<div class="badge">${c.unread}</div>` : ''}</div>
+    </div>`).join('');
+  $('contact-list').innerHTML = localHtml
+    + `<div style="padding:8px 14px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg);">
+        <button onclick="doExternalSearch()" style="width:100%;padding:7px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--green);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;">
+          🔍 Extern suchen: "${esc(q)}"
+        </button>
+       </div>`
+    + extHtml;
+}
+
+function closeSearch() {
+  $('search-input').value = '';
+  _searchQ = '';
+  displayContacts(contacts);
+}
+window.openSearchContact = (userId, name, avatar) => {
+  closeSearch();
+  let c = contacts.find(x => String(x.id) === userId);
+  if (!c) {
+    c = {id: userId, type:'c2c', name, avatar, preview:'', time:0, unread:0};
+    contacts.unshift(c);
+    if (!userCache[userId]) {
+      userCache[userId] = {nickName: name, userAvatar: avatar};
+      cacheDirty = true;
+    }
+  }
+  displayContacts(contacts);
+  openChat(c);
+};
+window.closeSearch = closeSearch;
+
+// ── Chat öffnen ──
+function openChat(contact) {
+  activeContact = contact;
+  contact.unread = 0;
+  // Gelesen-Bestätigung senden
+  if (contact.type === 'c2c') {
+    wsSend('openim.msgreaded', {
+      C2CMsgReaded: {
+        Cookie: '',
+        C2CMsgReadedItem: [{
+          To_Account: contact.id,
+          LastedMsgTime: Math.floor(Date.now() / 1000),
+          Receipt: 1
+        }]
+      }
+    });
+  }
+  msgLastMsgTime = 0; msgLastMsgKey = ''; msgComplete = true; msgLoadingMore = false;
+  displayContacts(contacts);
+  $('empty-chat').style.display = 'none';
+  $('active-chat').style.display = 'flex';
+  $('chat-header-name').textContent = contact.name;
+  $('chat-header-sub').textContent = '#' + contact.id;
+  $('chat-header-avatar').innerHTML = avatarHtml(contact.avatar, contact.name, 36);
+  $('chat-messages').innerHTML = '';
+  loadMessages(contact.id, contact.type);
+}
+
+function loadMessages(id, type) {
+  if (type === 'group') {
+    wsSend('group.get_group_roam_msg', {GroupId: id, ReqMsgNumber: 40, ReqMsgSeq: 0});
+  } else {
+    const now = Math.floor(Date.now()/1000);
+    wsSend('openim.getroammsg', {
+      Peer_Account: id, MaxCnt: 40, MinTime: 0, MaxTime: now,
+      LastMsgTime: now, LastMsgKey: '', WithRecalledMsg: 1
+    });
+  }
+}
+
+function loadMoreMessages() {
+  if (!activeContact || activeContact.type === 'group') return;
+  if (msgComplete || msgLoadingMore || !msgLastMsgKey) return;
+  msgLoadingMore = true;
+  msgIsPrepend = true;
+  const el = $('chat-messages');
+  const indicator = document.createElement('div');
+  indicator.id = 'load-more-indicator';
+  indicator.style.cssText = 'text-align:center;padding:8px;color:var(--muted);font-size:11px;';
+  indicator.textContent = 'Loading older messages...';
+  el.prepend(indicator);
+  wsSend('openim.getroammsg', {
+    Peer_Account: activeContact.id,
+    MaxCnt: 20,
+    LastMsgTime: msgLastMsgTime,
+    MsgKey: msgLastMsgKey,
+    WithRecalledMsg: 1,
+    GetDirection: 0
+  });
+}
+
+// Scroll-Listener für Infinite Scroll
+(function setupScrollListener() {
+  const el = document.getElementById('chat-messages');
+  if (!el) { setTimeout(setupScrollListener, 100); return; }
+  el.addEventListener('scroll', () => {
+    if (el.scrollTop < 80) loadMoreMessages();
+  });
+})();
+
+function msgRowHtml(msg) {
+  const isMine = String(msg.From_Account) === String(myUid);
+  // Zurückgezogene Nachricht (MsgFlagBits & 8)
+  if (msg.MsgFlagBits & 8) {
+    const revoker = msg.RevokerInfo?.Revoker_Account;
+    const isRevokerMe = String(revoker) === String(myUid);
+    const label = isRevokerMe ? 'You recalled a message.' : `${esc(msg.From_AccountNick || msg.From_Account)} recalled a message.`;
+    return `<div style="text-align:center;color:var(--muted2);font-size:11px;padding:2px 0;font-style:italic;">🚫 ${label}</div>`;
+  }
+  if (msg.From_AccountNick && !userCache[msg.From_Account]) {
+    userCache[msg.From_Account] = {nickName: msg.From_AccountNick, userAvatar: msg.From_AccountHeadurl||''};
+    cacheDirty = true;
+  }
+  const info = userCache[msg.From_Account] || {};
+  const senderName = info.nickName || msg.From_AccountNick || msg.From_Account;
+  const avatar = info.userAvatar || msg.From_AccountHeadurl || '';
+  const content = renderMsgContent(msg.MsgBody);
+  const msgKey = `${msg.MsgSeq}_${msg.MsgRandom}_${msg.MsgTimeStamp}`;
+  const recallBtn = isMine
+    ? `<button class="msg-del-btn" onclick="recallMsg('${msg.MsgSeq}','${msg.MsgRandom}','${msg.MsgTimeStamp}','${msg.From_Account}','${msg.To_Account}',this)" title="Recall (for everyone)">↩</button>`
+    : '';
+  const delBtn = isMine ? `<button class="msg-del-btn" onclick="deleteMsg('${msgKey}','${msg.From_Account}','${msg.To_Account}',this)" title="Delete locally">🗑</button>` : '';
+  return `<div class="msg-row${isMine?' own':''}">
+    <div class="msg-avatar">${avatarHtml(avatar, senderName, 32)}</div>
+    <div class="msg-c">
+      ${!isMine && activeContact?.type === 'group' ? `<div class="msg-sender">${esc(senderName)}</div>` : ''}
+      <div class="bubble">${content}</div>
+      <div class="bubble-time">${fmtTime(msg.MsgTimeStamp)}${recallBtn}${delBtn}</div>
+    </div>
+  </div>`;
+}
+
+function recallMsg(msgSeq, msgRandom, msgTs, fromAccount, toAccount, btn) {
+  const row = btn.closest('.msg-row');
+  wsSend('openim.msgwithdraw', {
+    MsgInfo: {
+      From_Account: fromAccount,
+      To_Account: toAccount,
+      MsgSeq: Number(msgSeq),
+      MsgRandom: Number(msgRandom),
+      MsgTimeStamp: Number(msgTs)
+    }
+  });
+  if (row) row.replaceWith((() => {
+    const d = document.createElement('div');
+    d.style.cssText = 'text-align:center;color:var(--muted2);font-size:11px;padding:2px 0;font-style:italic;';
+    d.textContent = '🚫 You recalled a message.';
+    return d;
+  })());
+}
+window.recallMsg = recallMsg;
+
+function reloadMessages() {
+  if (!activeContact) return;
+  $('chat-messages').innerHTML = '';
+  msgLastMsgTime = 0; msgLastMsgKey = ''; msgComplete = true; msgLoadingMore = false;
+  loadMessages(activeContact.id, activeContact.type);
+}
+window.reloadMessages = reloadMessages;
+
+function deleteMsg(msgKey, fromAccount, toAccount, btn) {
+  const row = btn.closest('.msg-row');
+  wsSend('openim.delete_c2c_msg_ramble', {
+    From_Account: fromAccount,
+    To_Account: toAccount,
+    MsgKeyList: [msgKey]
+  });
+  if (row) row.replaceWith((() => {
+    const d = document.createElement('div');
+    d.style.cssText = 'text-align:center;color:var(--muted2);font-size:11px;padding:2px 0;font-style:italic;';
+    d.textContent = '🗑 Message deleted.';
+    return d;
+  })());
+}
+window.deleteMsg = deleteMsg;
+
+function renderMessages(body, prepend = false) {
+  const msgs = body?.MsgList || body?.RoamMsgList || [];
+  // Cursor für nächste Seite (ältere Nachrichten) immer aktualisieren
+  if (body?.LastMsgTime) msgLastMsgTime = body.LastMsgTime;
+  if (body?.MsgKey) msgLastMsgKey = body.MsgKey;
+  msgComplete = body?.Complete === 1 || !body?.MsgKey || msgs.length === 0;
+  msgLoadingMore = false;
+  const el = $('chat-messages');
+  // Lade-Indikator entfernen
+  document.getElementById('load-more-indicator')?.remove();
+  if (prepend) {
+    if (!msgs.length) return;
+    const scrollBottom = el.scrollHeight - el.scrollTop;
+    const html = msgs.map(msgRowHtml).join('');
+    el.insertAdjacentHTML('afterbegin', html);
+    el.scrollTop = el.scrollHeight - scrollBottom;
+    return;
+  }
+  el.innerHTML = msgs.map(msgRowHtml).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderMsgContent(msgBody) {
+  return (Array.isArray(msgBody) ? msgBody : []).map(elem => {
+    if (elem.MsgType === 'TIMTextElem')
+      return `<span>${esc(elem.MsgContent?.Text||'')}</span>`;
+    if (elem.MsgType === 'TIMImageElem') {
+      const url = elem.MsgContent?.ImageInfoArray?.[0]?.URL || '';
+      return url ? `<img src="${esc(url)}" style="max-width:200px;max-height:200px;border-radius:8px;display:block;cursor:zoom-in" onclick="openLightbox('${esc(url)}')"/>` : '';
+    }
+    if (elem.MsgType === 'TIMFileElem') {
+      const c = elem.MsgContent || {};
+      const url = c.Url || c.URL || '';
+      const name = c.FileName || 'File';
+      const size = c.FileSize ? `${(c.FileSize/1024/1024).toFixed(2)} MB` : '';
+      const ext = name.split('.').pop().toUpperCase();
+      const icon = ['STL','OBJ','3MF','GCODE'].includes(ext) ? '🖨️' : '📎';
+      const safeUrl = esc(url), safeName = esc(name);
+      return url
+        ? `<div class="model-card" onclick="downloadFile('${safeUrl}','${safeName}')" title="Click to download">
+            <div style="width:64px;height:64px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:28px;">${icon}</div>
+            <div class="mc-info">
+              <div class="mc-name">${esc(name)}</div>
+              <div class="mc-tag">${esc(ext)} · ${size}</div>
+              <div style="font-size:10px;color:var(--muted);">⬇ Download</div>
+            </div>
+          </div>`
+        : `<span>${icon} ${esc(name)}</span>`;
+    }
+    if (elem.MsgType === 'TIMCustomElem') {
+      try {
+        const d = JSON.parse(elem.MsgContent?.Data || '{}');
+        if (d.type === 'modelCard' || d.businessID?.includes('model')) {
+          return renderModelCardHtml(d.groupName||d.name||'Modell', d.coverUrl||'', d.modelId||'');
+        }
+      } catch {}
+      return `<span style="color:var(--muted);font-size:11px;">[Custom: ${esc((elem.MsgContent?.Desc||'').substring(0,40))}]</span>`;
+    }
+    return `<span style="color:var(--muted);font-size:11px;">[${esc(elem.MsgType||'?')}]</span>`;
+  }).join('');
+}
+
+function renderModelCardHtml(name, coverUrl, modelId) {
+  const link = modelId ? `https://www.crealitycloud.com/model-detail/${modelId}` : '#';
+  return `<div class="model-card" onclick="openLink('${esc(link)}')">${coverUrl
+      ? `<img src="${esc(coverUrl)}" onerror="this.style.display='none'" style="width:64px;height:64px;border-radius:6px;object-fit:cover;flex-shrink:0;"/>`
+      : `<div style="width:64px;height:64px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:28px;">📦</div>`}
+    <div class="mc-info"><div class="mc-name">${esc(name)}</div><div class="mc-tag">📦 3D Modell</div><div style="font-size:10px;color:var(--muted);">Klicken zum Öffnen</div></div>
+  </div>`;
+}
+
+// ── Nachricht senden (via WS) ──
+$('btn-send').onclick = sendText;
+$('msg-input').addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendText();} });
+$('msg-input').oninput = function() { this.style.height='auto'; this.style.height=this.scrollHeight+'px'; };
+
+function sendText() {
+  if (!activeContact) return;
+  const text = $('msg-input').value.trim();
+  if (!text) return;
+  const myInfo = userCache[myUid] || {};
+  wsSend('openim.sendmsg', {
+    From_Account: myUid, To_Account: activeContact.id,
+    MsgSeq: Math.floor(Math.random()*4294967295), MsgRandom: Math.floor(Math.random()*4294967295),
+    MsgBody: [{MsgType:'TIMTextElem',MsgContent:{Text:text}}],
+    CloudCustomData: '',
+    From_AccountNick: myInfo.nickName||myUid, From_AccountHeadurl: myInfo.userAvatar||'',
+    OfflinePushInfo: {PushFlag:0,Title:'',Desc:'',Ext:'',ApnsInfo:{BadgeMode:0},AndroidInfo:{OPPOChannelID:''}},
+    SendMsgControl:[], MsgClientTime:Math.floor(Date.now()/1000), IsNeedReadReceipt:0, SupportMessageExtension:0
+  });
+  const el = $('chat-messages');
+  el.innerHTML += `<div class="msg-row own">
+    <div class="msg-avatar">${avatarHtml(myInfo.userAvatar||'', myInfo.nickName||myUid, 32)}</div>
+    <div class="msg-c"><div class="bubble">${esc(text)}</div><div class="bubble-time">Jetzt</div></div>
+  </div>`;
+  el.scrollTop = el.scrollHeight;
+  $('msg-input').value = '';
+  $('msg-input').style.height = 'auto';
+}
+
+// ── Modell teilen (Latest Browse Record, Fallback auf eigene Modelle) ──
+$('btn-model').onclick = async () => {
+  if (!activeContact) return;
+  const btn = $('btn-model');
+  btn.textContent = '⏳'; btn.disabled = true;
+  try {
+    const r = await invoke('get_latest_browse_record', { token: myToken, myUid, otherUid: activeContact.id });
+    btn.textContent = '📦'; btn.disabled = false;
+    const m = r?.code === 0 ? r?.result?.modelInfo : null;
+    if (!m) {
+      // Fallback: eigene Modelle im Dialog anzeigen
+      setStatusMsg('Kein Browse-Record — eigene Modelle wählen');
+      openModelDialog();
+      return;
+    }
+    const coverUrl = m.pcCovers?.[0]?.url || m.appCovers?.[0]?.url || m.covers?.[0]?.url || '';
+    const data = JSON.stringify({
+      type:'modelCard', version:1, businessID:'cxy_model_latest_browse',
+      modelId: m.modelId, groupName: m.groupName, coverUrl, urlAlias:''
+    });
+    wsSend('openim.sendmsg', {
+      From_Account: myUid, To_Account: activeContact.id,
+      MsgSeq: Math.floor(Date.now()/1000), MsgRandom: Math.floor(Math.random()*2147483647),
+      MsgBody: [{MsgType:'TIMCustomElem',MsgContent:{Data:data,Desc:'',Ext:''}}],
+      CloudCustomData:'', OfflinePushInfo:{PushFlag:0,Title:'',Desc:m.groupName,Ext:''}
+    });
+    const el = $('chat-messages');
+    el.innerHTML += `<div class="msg-row own">
+      <div class="msg-avatar">${avatarHtml(userCache[myUid]?.userAvatar||'',userCache[myUid]?.nickName||myUid,32)}</div>
+      <div class="msg-c"><div class="bubble">${renderModelCardHtml(m.groupName, coverUrl, m.modelId)}</div><div class="bubble-time">now</div></div>
+    </div>`;
+    el.scrollTop = el.scrollHeight;
+    setStatusMsg('Model shared ✓');
+  } catch(e) {
+    btn.textContent = '📦'; btn.disabled = false;
+    setStatusMsg('Error: ' + e, true);
+  }
+};
+
+// ── Eigene Modelle / Dialog ──
+$('btn-model').addEventListener('contextmenu', e => { e.preventDefault(); openModelDialog(); });
+
+async function openModelDialog() {
+  $('model-dialog').classList.add('open');
+  $('model-results').innerHTML = '<div class="loading">Loading your models...</div>';
+  $('model-status').textContent = '';
+  try {
+    const r = await invoke('get_my_models', { token: myToken, uid: myUid });
+    const models = (r?.result?.list||[]).map(x=>x.modelInfo||x).filter(x=>x.id||x.modelId);
+    $('model-status').textContent = `${models.length} models`;
+    showModelResults(models);
+  } catch(e) {
+    $('model-results').innerHTML = `<div style="padding:16px;color:var(--red)">Error: ${esc(String(e))}</div>`;
+  }
+}
+function closeModelDialog() { $('model-dialog').classList.remove('open'); }
+window.closeModelDialog = closeModelDialog;
+
+$('model-search-input').addEventListener('keydown', e => { if(e.key==='Enter') doModelSearch(); });
+async function doModelSearch() {
+  const q = $('model-search-input').value.trim();
+  if (!q) return;
+  $('model-results').innerHTML = '<div class="loading">Searching...</div>';
+  try {
+    const r = await invoke('search_models', { token: myToken, uid: myUid, keyword: q });
+    $('model-status').textContent = `${(r?.result?.list||[]).length} results`;
+    showModelResults(r?.result?.list||[]);
+  } catch(e) {
+    $('model-results').innerHTML = `<div style="padding:16px;color:var(--red)">Error: ${esc(String(e))}</div>`;
+  }
+}
+window.doModelSearch = doModelSearch;
+
+function showModelResults(models) {
+  const el = $('model-results');
+  if (!models.length) { el.innerHTML = '<div class="loading">No results</div>'; return; }
+  el.innerHTML = '';
+  models.forEach(m => {
+    const cover = m.covers?.[0]?.url || m.pcCovers?.[0]?.url || '';
+    const name = m.groupName || m.name || 'Model';
+    const row = document.createElement('div');
+    row.className = 'model-result';
+    row.innerHTML = `
+      <img src="${esc(cover)}" onerror="this.style.display='none'" alt="">
+      <div class="model-result-info">
+        <div class="model-result-name">${esc(name)}</div>
+        <div class="model-result-cat">${esc(m.categoryName||'')}</div>
+      </div>`;
+    row.onclick = () => { if (activeContact) { sendModelCard(m); closeModelDialog(); } else { openLink(`https://www.crealitycloud.com/model-detail/${m.id||m.modelId}`); } };
+    el.appendChild(row);
+  });
+}
+
+function sendModelCard(m) {
+  if (!activeContact) return;
+  const id = m.id || m.modelId || '';
+  const name = m.groupName || m.name || 'Modell';
+  const cover = m.covers?.[0]?.url || m.pcCovers?.[0]?.url || '';
+  const customData = JSON.stringify({
+    type:'modelCard', version:1, businessID:'cxy_model_latest_browse',
+    modelId: id, groupName: name, coverUrl: cover, urlAlias: m.urlAlias||''
+  });
+  wsSend('openim.sendmsg', {
+    From_Account: myUid, To_Account: activeContact.id,
+    MsgSeq: Math.floor(Math.random()*4294967295), MsgRandom: Math.floor(Math.random()*4294967295),
+    MsgBody: [{MsgType:'TIMCustomElem',MsgContent:{Data:customData,Desc:name,Ext:''}}],
+    CloudCustomData:'', MsgClientTime:Math.floor(Date.now()/1000)
+  });
+  const el = $('chat-messages');
+  el.innerHTML += `<div class="msg-row own">
+    <div class="msg-avatar">${avatarHtml(userCache[myUid]?.userAvatar||'',userCache[myUid]?.nickName||myUid,32)}</div>
+    <div class="msg-c"><div class="bubble">${renderModelCardHtml(name, cover, id)}</div><div class="bubble-time">Jetzt</div></div>
+  </div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Status & Benachrichtigungen ──
+function setStatus(state) {
+  wsSend('im_open_status.set_state', {State: state});
+  $('my-status').className = state==='Away'?'away':state==='Invisible'?'invisible':'';
+}
+
+$('btn-notify').onclick = async () => {
+  notificationsOn = !notificationsOn;
+  $('btn-notify').textContent = notificationsOn ? '🔔' : '🔕';
+  $('btn-notify').style.opacity = notificationsOn ? '0.9' : '0.4';
+  const s = await invoke('get_settings').catch(()=>({notifications:true,auto_login:true}));
+  await invoke('save_settings', { settings: {...s, notifications: notificationsOn} }).catch(()=>{});
+};
+
+// ── Logout ──
+$('btn-logout').onclick = async () => {
+  await invoke('delete_credentials').catch(()=>{});
+  myToken=''; myUid=''; myUserSig=''; myA2=''; myTinyId='';
+  contacts=[]; activeContact=null; userCache={}; cacheDirty=false;
+  $('app').style.display='none';
+  $('status-bar').style.display='none';
+  $('login-screen').style.display='flex';
+  $('login-err').textContent='';
+  $('inp-uid').value='';
+  $('inp-token').value='';
+  $('saved-hint').style.display='none';
+  $('saved-hint').textContent='';
+  $('btn-oauth-login').disabled=false;
+  $('btn-oauth-login').textContent='🔐 Sign in with Creality';
+  $('contact-list').innerHTML='<div class="loading">Connecting...</div>';
+  $('chat-messages').innerHTML='';
+  $('my-avatar').textContent='?';
+  $('my-name').textContent='...';
+  $('empty-chat').style.display='flex';
+  $('active-chat').style.display='none';
+};
+
+// ── WS Status Helpers ──
+function setWsStatus(ok, msg='') {
+  const el = $('ws-status');
+  el.textContent = ok ? '● Verbunden' : '● Getrennt';
+  el.className = ok ? 'on' : '';
+  $('ws-detail').textContent = msg ? ' – ' + msg : '';
+  $('ws-detail').style.color = ok ? 'var(--muted)' : 'var(--red)';
+  if (ok) { $('btn-reconnect').style.display = 'none'; }
+}
+function setStatusMsg(msg, isErr=false) {
+  const el = $('status-msg');
+  el.textContent = msg;
+  el.style.color = isErr ? 'var(--red)' : '';
+  if (msg) setTimeout(() => { el.textContent=''; el.style.color=''; }, 4000);
+}
+</script>
+</body>
+</html>

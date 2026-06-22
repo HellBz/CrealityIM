@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capabilities","local":true,"windows":["main","oauth-login","oauth-callback"],"permissions":["core:default","shell:allow-open","http:default","http:allow-fetch"]}}
