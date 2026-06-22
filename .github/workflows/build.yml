@@ -76,6 +76,7 @@ jobs:
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
             src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
+            src-tauri/target/${{ matrix.target }}/release/creality-im.exe
 
       - name: Upload macOS artifacts
         if: matrix.os == 'macos-latest'
