@@ -217,6 +217,7 @@
   <span id="ws-detail"></span>
   <span id="status-msg"></span>
   <button id="btn-reconnect" style="display:none;margin-left:8px;padding:2px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--green);font-size:11px;cursor:pointer;font-family:inherit;" onclick="reconnectWS()">↺ Reconnect</button>
+  <button onclick="location.reload()" title="Reload App" style="margin-left:auto;padding:2px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit;">⟳ Reload</button>
 </div>
 
 <!-- Lightbox -->
@@ -290,7 +291,7 @@ let myToken = '', myUid = '', myUserSig = '', myA2 = '', myTinyId = '', statusIn
 let contacts = [], activeContact = null, userCache = {}, cacheDirty = false;
 let notificationsOn = true, notifiedMsgs = new Set();
 let wsSeq = Math.floor(Math.random() * 1e7);
-let ws = null, hbTimer = null;
+let ws = null, hbTimer = null, reconnectTimer = null, reconnectDelay = 3000;
 let pendingUnread = {};
 let msgLastMsgTime = 0, msgLastMsgKey = '', msgComplete = true, msgLoadingMore = false, msgIsPrepend = false;
 
@@ -364,6 +365,7 @@ function connectWS() {
     ws.onopen = () => {
       $('btn-reconnect').style.display = 'none';
       $('btn-reconnect').disabled = false;
+      reconnectDelay = 3000;
       setWsStatus(true, 'Connected, signing in...');
       wsSend('im_open_status.wslogin', {State:'Online', is_web_uniapp:0, InstType:0});
       hbTimer = setInterval(() => wsSend('heartbeat.alive', {}), 25000);
@@ -377,8 +379,17 @@ function connectWS() {
     ws.onclose = e => {
       clearInterval(hbTimer);
       if (!myToken) return;
-      setWsStatus(false, `Disconnected (${e.code})`);
+      setWsStatus(false, `Disconnected (${e.code}) – reconnecting...`);
       $('btn-reconnect').style.display = 'inline-block';
+      clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(async () => {
+        try {
+          const r = await invoke('im_login', { token: myToken, userId: myUid, cookieStr: '' });
+          if (r?.data?.userSig) { myUserSig = r.data.userSig; reconnectDelay = 3000; }
+        } catch(_) {}
+        connectWS();
+      }, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 2, 30000);
     };
   };
 
@@ -1039,7 +1050,7 @@ function sendText() {
   const el = $('chat-messages');
   el.innerHTML += `<div class="msg-row own">
     <div class="msg-avatar">${avatarHtml(myInfo.userAvatar||'', myInfo.nickName||myUid, 32)}</div>
-    <div class="msg-c"><div class="bubble">${esc(text)}</div><div class="bubble-time">Jetzt</div></div>
+    <div class="msg-c"><div class="bubble">${esc(text)}</div><div class="bubble-time">Now</div></div>
   </div>`;
   el.scrollTop = el.scrollHeight;
   $('msg-input').value = '';
@@ -1157,7 +1168,7 @@ function sendModelCard(m) {
   const el = $('chat-messages');
   el.innerHTML += `<div class="msg-row own">
     <div class="msg-avatar">${avatarHtml(userCache[myUid]?.userAvatar||'',userCache[myUid]?.nickName||myUid,32)}</div>
-    <div class="msg-c"><div class="bubble">${renderModelCardHtml(name, cover, id)}</div><div class="bubble-time">Jetzt</div></div>
+    <div class="msg-c"><div class="bubble">${renderModelCardHtml(name, cover, id)}</div><div class="bubble-time">Now</div></div>
   </div>`;
   el.scrollTop = el.scrollHeight;
 }
