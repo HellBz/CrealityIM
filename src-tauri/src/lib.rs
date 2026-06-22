@@ -42,7 +42,23 @@ fn load_credentials() -> Result<Value, String> {
                 Ok(Value::Null)
             }
         }
-        Err(_) => Ok(Value::Null),
+        Err(_) => {
+            // Migration: alte login.json in Keystore übertragen
+            let path = app_data_dir().join("login.json");
+            if path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    let v: Value = serde_json::from_str(&content).unwrap_or(Value::Null);
+                    if v.get("user_id").and_then(|x| x.as_str()).map(|s| !s.is_empty()).unwrap_or(false)
+                        && v.get("token").and_then(|x| x.as_str()).map(|s| !s.is_empty()).unwrap_or(false)
+                    {
+                        let _ = entry.set_password(&content);
+                        let _ = std::fs::remove_file(&path);
+                        return Ok(v);
+                    }
+                }
+            }
+            Ok(Value::Null)
+        }
     }
 }
 

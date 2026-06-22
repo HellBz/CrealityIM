@@ -420,7 +420,7 @@ async function init() {
   if (creds && creds.user_id) {
     $('inp-uid').value = creds.user_id;
     $('saved-hint').style.display = 'block';
-    $('saved-hint').textContent = `Gespeichert: ${creds.email || creds.user_id} – Klicken für Auto-Login`;
+    $('saved-hint').textContent = `Saved: ${creds.email || creds.user_id} – Click for Auto-Login`;
     if (settings.auto_login !== false) doAutoLogin(creds);
   }
 }
@@ -478,7 +478,7 @@ async function _oauthHandleToken(token, userId) {
     const r = await invoke('im_login', { token, userId: userId || '', cookieStr: '' });
     if (r?.code === 0 && r.result?.userSig) {
       const uid = r.result?.imUserInfoVO?.userId ? String(r.result.imUserInfoVO.userId) : userId;
-      await invoke('save_credentials', { userId: uid, token, email: '' }).catch(()=>{});
+      await invoke('save_credentials', { userId: uid, token, email: '' }).catch((e)=>{ console.error('save_credentials failed:', e); });
       setErr('');
       startApp(token, uid, r.result.userSig);
     } else {
