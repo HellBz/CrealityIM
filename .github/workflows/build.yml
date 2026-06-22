@@ -58,7 +58,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -85,7 +85,7 @@ jobs:
           if-no-files-found: warn
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-            src-tauri/target/${{ matrix.target }}/release/bundle/macos/
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app
 
       - name: Upload Linux artifacts
         if: matrix.os == 'ubuntu-22.04'
