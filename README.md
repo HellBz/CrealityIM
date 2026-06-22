@@ -5,6 +5,8 @@ A native desktop chat client for **Creality Cloud** messaging, built with [Tauri
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+![Screenshot](screenshot/MainApp.png)
+
 ## Features
 
 - 🔐 **OAuth Login** via Creality Cloud account (id.creality.com)
