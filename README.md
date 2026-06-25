@@ -1,23 +1,36 @@
 # CrealityIM
 
-A native desktop chat client for **Creality Cloud** messaging, built with [Tauri](https://tauri.app/) and Rust.
+An unofficial native desktop chat client for **Creality Cloud** messaging, built with [Tauri](https://tauri.app/) and Rust.
 
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/github/v/release/HellBz/CrealityIM)
 
-![Screenshot](screenshot/MainApp.png)
+## Screenshots
+
+| Login | Main |
+|---|---|
+| ![Login](screenshot/login.png) | ![Main](screenshot/main.png) |
+
+| Chat | User Search |
+|---|---|
+| ![Chat](screenshot/chat.png) | ![User Search](screenshot/user-search.png) |
+
+![Model Search](screenshot/model-search.png)
 
 ## Features
 
-- 🔐 **OAuth Login** via Creality Cloud account (id.creality.com)
-- 💬 **Real-time messaging** over WebSocket (Tencent IM)
-- 📎 **File & image sharing** with in-app preview
-- 🖨️ **3D model sharing** directly from your Creality Cloud library
-- 🔔 **Native notifications** for new messages
-- 📋 **Contact list** with unread message badges
-- ↩️ **Message recall** and local delete
-- 🌙 **Dark mode** UI
-- 🔄 **Auto-reconnect** with token refresh
+- **OAuth Login** via Creality Cloud account (id.creality.com)
+- **Real-time messaging** over WebSocket (Tencent IM)
+- **File & image sharing** with file-type icons and in-app preview
+- **3D model sharing** directly from your Creality Cloud library
+- **User search** on Creality Cloud to start new chats
+- **Native notifications** for new messages (Windows, macOS, Linux)
+- **Contact list** with avatars, unread badges and last message preview
+- **Message recall** and local delete
+- **Dark mode** UI with Creality green accent
+- **Auto-reconnect** with token refresh
+- **Secure credential storage** via OS keychain
 
 ## Download
 
