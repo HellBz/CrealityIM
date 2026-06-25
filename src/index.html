@@ -103,13 +103,19 @@
   .msg-row.own .bubble .mc-tag { color:rgba(0,0,0,0.6); }
   .msg-row.own .bubble .model-card div[style*="font-size:10px"] { color:rgba(0,0,0,0.5) !important; }
   .msg-row.own .bubble .model-card > div:first-child { background:rgba(0,0,0,0.1) !important; }
-  #chat-input-area { padding:12px 18px; background:var(--bg2); border-top:1px solid var(--border); display:flex; gap:8px; align-items:flex-end; }
+  #chat-input-area { padding:12px 18px; background:var(--bg2); border-top:1px solid var(--border); display:flex; gap:8px; align-items:center; }
+  #upload-progress { display:none; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--greendim); }
+  #upload-progress-bar { height:100%; background:var(--green); width:0%; transition:width 0.2s; border-radius:2px; }
+  #chat-input-area { position:relative; }
   #msg-input { flex:1; padding:9px 13px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; resize:none; max-height:100px; font-family:inherit; }
   #msg-input:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 2px var(--greendim); }
   #btn-send { padding:9px 18px; background:var(--green); border:none; border-radius:8px; color:#000; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
   #btn-send:hover { background:var(--green2); }
   #status-bar { padding:3px 14px; background:var(--bg); border-top:1px solid var(--border); font-size:10px; color:var(--muted); display:flex; gap:14px; align-items:center; }
   #ws-status { color:var(--red); } #ws-status.on { color:var(--green); }
+  #btn-notify { position: relative; }
+  #btn-notify .bell-wave { display: none; }
+  #btn-notify.ringing .bell-wave { display: inline; }
 
   /* ── Model Dialog ── */
   #model-dialog { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; align-items:center; justify-content:center; }
@@ -149,7 +155,7 @@
     <svg viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="18" fill="#00c853"/><path d="M10 18a8 8 0 1 1 16 0" stroke="#000" stroke-width="2.5" stroke-linecap="round"/><circle cx="18" cy="18" r="3" fill="#000"/></svg>
     <h1>Creality <span>Cloud</span> IM</h1>
   </div>
-  <p style="color:var(--muted);font-size:13px;">Sign in with your Creality account</p>
+  <p style="color:var(--muted);font-size:13px;">Unofficial desktop chat client for Creality Cloud</p>
   <button id="btn-oauth-login" style="width:340px;background:var(--green);color:#000;font-weight:700;font-size:14px;padding:11px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;margin-bottom:2px;">
     🔐 Sign in with Creality
   </button>
@@ -167,7 +173,7 @@
     <input type="checkbox" id="chk-auto-login" style="cursor:pointer;width:14px;height:14px;"/>
     Auto-login on startup
   </label>
-  <p style="color:var(--muted2);font-size:11px;margin-top:4px;text-align:center;">Credentials stored in: %APPDATA%\CrealityIM\</p>
+  <p style="color:var(--muted2);font-size:11px;margin-top:4px;text-align:center;">Made with ❤️ by <a href="https://www.crealitycloud.com/user-profile/8749025865" target="_blank" style="color:var(--green);text-decoration:none;display:inline-flex;align-items:center;gap:4px;vertical-align:middle;"><img src="avatar.png" style="width:16px;height:16px;border-radius:3px;object-fit:cover;"> HellBz3D</a></p>
 </div>
 
 <!-- App -->
@@ -183,16 +189,37 @@
           <option value="Invisible">⚪ Invisible</option>
         </select>
       </div>
-      <button id="btn-notify" title="Notifications">🔔</button>
+      <button id="btn-notify" title="Notifications" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;color:var(--green);transition:color 0.15s;flex-shrink:0;">
+        <svg id="notify-icon" width="26" height="22" viewBox="0 0 32 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <!-- Schallbögen links -->
+          <path class="bell-wave" d="M6 7 Q1 14 6 21" stroke-opacity="0.55"/>
+          <path class="bell-wave" d="M3 4 Q-3 14 3 24" stroke-opacity="0.25"/>
+          <!-- Glocke zentriert -->
+          <path d="M22 10 A6 6 0 0 0 10 10 c0 7-3 8-3 8 h18 s-3-1-3-8"/>
+          <path d="M14.27 23 a2 2 0 0 0 3.46 0"/>
+          <!-- Schallbögen rechts -->
+          <path class="bell-wave" d="M26 7 Q31 14 26 21" stroke-opacity="0.55"/>
+          <path class="bell-wave" d="M29 4 Q35 14 29 24" stroke-opacity="0.25"/>
+        </svg>
+      </button>
       <button id="btn-logout">Logout</button>
     </div>
     <div id="search-box">
-      <input id="search-input" placeholder="Filter chats / search users..." />
+      <input id="search-input" placeholder="Filter chats, search & add users..." />
     </div>
     <div id="contact-list"><div class="loading">Connecting...</div></div>
   </div>
   <div id="chat-area">
-    <div id="empty-chat"><span style="font-size:40px">💬</span><span>Select a chat</span></div>
+    <div id="empty-chat">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Select a chat</span>
+      <span style="font-size:11px;color:var(--muted2);margin-top:12px;text-align:center;max-width:280px;line-height:1.8;">
+        Unofficial desktop chat client<br>
+        Not affiliated with Creality<br><br>
+        Made with ❤️ by
+        <a href="https://www.crealitycloud.com/user-profile/8749025865" target="_blank" style="color:var(--muted2);text-decoration:none;display:inline-flex;align-items:center;gap:4px;vertical-align:middle;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--muted2)'"><img src="avatar.png" style="width:16px;height:16px;border-radius:3px;object-fit:cover;"> HellBz3D</a>
+      </span>
+    </div>
     <div id="active-chat">
       <div id="chat-header">
         <div id="chat-header-avatar" class="c-avatar" style="width:36px;height:36px;font-size:14px;flex-shrink:0;"></div>
@@ -200,11 +227,24 @@
           <div style="font-weight:600;font-size:14px;" id="chat-header-name"></div>
           <div style="font-size:11px;color:var(--muted);" id="chat-header-sub"></div>
         </div>
-        <button id="btn-reload-chat" title="Reload messages" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px 6px;border-radius:4px;" onclick="reloadMessages()">🔄</button>
+        <button id="btn-reload-chat" title="Reload messages" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:4px;display:flex;align-items:center;transition:color 0.15s;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--muted)'" onclick="reloadMessages()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
       </div>
       <div id="chat-messages"></div>
       <div id="chat-input-area">
-        <button id="btn-model" title="Share last viewed model" style="background:none;border:none;font-size:20px;cursor:pointer;padding:0 4px;color:var(--muted);flex-shrink:0;">📦</button>
+        <div id="upload-progress"><div id="upload-progress-bar"></div></div>
+        <button id="btn-image-upload" title="Send image" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--muted);flex-shrink:0;display:flex;align-items:center;transition:color 0.15s;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--muted)'">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </button>
+        <input type="file" id="image-input" accept="image/*" style="display:none;" />
+        <button id="btn-file-upload" title="Send file" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--muted);flex-shrink:0;display:flex;align-items:center;transition:color 0.15s;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--muted)'">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+        </button>
+        <input type="file" id="file-input" style="display:none;" />
+        <button id="btn-model" title="Share last viewed model" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--muted);flex-shrink:0;display:flex;align-items:center;transition:color 0.15s;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--muted)'">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </button>
         <textarea id="msg-input" rows="1" placeholder="Message..."></textarea>
         <button id="btn-send">Send</button>
       </div>
@@ -225,7 +265,7 @@
   <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()"/>
   <div id="lightbox-bar" onclick="event.stopPropagation()">
     <button id="lightbox-close" onclick="closeLightbox()">✕</button>
-    <a id="lightbox-link" href="#" target="_blank">🔗 Im Browser öffnen</a>
+    <a id="lightbox-link" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Open in browser</a>
   </div>
 </div>
 
@@ -233,12 +273,12 @@
 <div id="model-dialog">
   <div id="model-box">
     <div id="model-box-header">
-      <span>Modell teilen</span>
+      <span>Share model</span>
       <span id="model-status" style="color:var(--muted);font-size:12px;font-weight:normal"></span>
       <button onclick="closeModelDialog()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button>
     </div>
     <div id="model-search-row">
-      <input id="model-search-input" placeholder="Modell suchen...">
+      <input id="model-search-input" placeholder="Search model...">
       <button onclick="doModelSearch()" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:6px;">🔍</button>
     </div>
     <div id="model-results"></div>
@@ -302,9 +342,9 @@ function fmtTime(ts) {
   const d = new Date(ts * 1000);
   const now = new Date();
   const diffH = (now - d) / 3600000;
-  if (diffH < 24 && d.getDate() === now.getDate()) return d.toLocaleTimeString('de', {hour:'2-digit', minute:'2-digit'});
-  if (diffH < 24 * 7) return d.toLocaleDateString('de', {weekday:'short'}) + ' ' + d.toLocaleTimeString('de', {hour:'2-digit', minute:'2-digit'});
-  return d.toLocaleDateString('de', {day:'2-digit', month:'2-digit'}) + ' ' + d.toLocaleTimeString('de', {hour:'2-digit', minute:'2-digit'});
+  if (diffH < 24 && d.getDate() === now.getDate()) return d.toLocaleTimeString('en', {hour:'2-digit', minute:'2-digit'});
+  if (diffH < 24 * 7) return d.toLocaleDateString('en', {weekday:'short'}) + ' ' + d.toLocaleTimeString('en', {hour:'2-digit', minute:'2-digit'});
+  return d.toLocaleDateString('en', {day:'2-digit', month:'2-digit'}) + ' ' + d.toLocaleTimeString('en', {hour:'2-digit', minute:'2-digit'});
 }
 function initials(n) { return (n||'?')[0].toUpperCase(); }
 function avatarHtml(url, name, size) {
@@ -324,6 +364,16 @@ function previewText(body) {
 // ── WS direkt im Browser (wie Python-App) ──
 function wsUrl() {
   return `wss://wsssgp.im.qcloud.com/binfo?sdkappid=${SDKAPPID}&instanceid=${Math.random().toString(36).substr(2)}&random=${Math.random()}&platform=${PLATFORM}&host=windows&version=-1&sdkversion=${SDKVERSION}&compress=none`;
+}
+function wsSendNoA2(cmd, body) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  const head = {
+    ver: 'v4', platform: PLATFORM, websdkappid: WEBSDKAPPID, websdkversion: SDKVERSION,
+    status_instid: statusInstId, sdkappid: SDKAPPID, contenttype: 'json',
+    reqtime: Math.floor(Date.now()/1000), identifier: myUid, usersig: myUserSig,
+    sdkability: 192371, servcmd: cmd, seq: wsSeq++,
+  };
+  ws.send(new TextEncoder().encode(JSON.stringify({head, body})).buffer);
 }
 function wsSend(cmd, body, extraHead = {}) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -406,7 +456,8 @@ function connectWS() {
 async function init() {
   const settings = await invoke('get_settings').catch(() => ({notifications:true,auto_login:true}));
   notificationsOn = settings.notifications !== false;
-  $('btn-notify').textContent = notificationsOn ? '🔔' : '🔕';
+  $('btn-notify').style.color = notificationsOn ? 'var(--green)' : 'var(--red)';
+  $('btn-notify').classList.toggle('ringing', notificationsOn);
   $('chk-auto-login').checked = settings.auto_login !== false;
 
   const cache = await invoke('load_user_cache').catch(() => ({}));
@@ -561,6 +612,16 @@ function handleWsMsg(data) {
   const cmd = data?.head?.servcmd;
   if (!cmd) return;
 
+  if (cmd === 'im_cos_msg.pre_sig') {
+    document.dispatchEvent(new CustomEvent('ws_upload_response', { detail: data }));
+    return;
+  }
+
+  if (cmd === 'im_cos_sign_svr.cos') {
+    document.dispatchEvent(new CustomEvent('ws_cos_credentials', { detail: data }));
+    return;
+  }
+
   if (cmd === 'im_open_status.wslogin') {
     if (data.head.retcode === 0 && data.body?.ErrorCode === 0) {
       myA2 = data.body.A2Key || '';
@@ -629,6 +690,10 @@ function handleWsMsg(data) {
         }
       });
     });
+    // Push-Empfang bestätigen
+    if (data.body?.SessionData) {
+      wsSend('openim.ws_msg_push_ack', { SessionData: data.body.SessionData });
+    }
   }
   else if (cmd === 'openim.sendmsg') {
     if (data.head?.retcode === 0) setStatusMsg('Sent ✓');
@@ -1033,6 +1098,34 @@ $('btn-send').onclick = sendText;
 $('msg-input').addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendText();} });
 $('msg-input').oninput = function() { this.style.height='auto'; this.style.height=this.scrollHeight+'px'; };
 
+function sendChatMessage(content, type, extraData) {
+  if (!activeContact) return;
+  const myInfo = userCache[myUid] || {};
+  const base = {
+    From_Account: myUid, To_Account: activeContact.id,
+    MsgSeq: Math.floor(Math.random()*4294967295), MsgRandom: Math.floor(Math.random()*4294967295),
+    CloudCustomData: '',
+    From_AccountNick: myInfo.nickName||myUid, From_AccountHeadurl: myInfo.userAvatar||'',
+    OfflinePushInfo: {PushFlag:0,Title:'',Desc:'',Ext:'',ApnsInfo:{BadgeMode:0},AndroidInfo:{OPPOChannelID:''}},
+    SendMsgControl:[], MsgClientTime:Math.floor(Date.now()/1000), IsNeedReadReceipt:0, SupportMessageExtension:0
+  };
+  if (type === 'image') {
+    const d = extraData || {};
+    base.MsgBody = [{MsgType:'TIMImageElem',MsgContent:{
+      ImageFormat: 3,
+      UUID: d.file_key || content,
+      ImageInfoArray: [
+        {Type:1, Size: d.size||0, Width: d.width||0, Height: d.height||0, URL: content},
+        {Type:2, Size:0, Width: d.width||0, Height: d.height||0, URL: d.large_url||content},
+        {Type:3, Size:0, Width: Math.round((d.width||0)*0.36), Height: Math.round((d.height||0)*0.36), URL: d.thumb_url||content}
+      ]
+    }}];
+  } else {
+    base.MsgBody = [{MsgType:'TIMTextElem',MsgContent:{Text:content}}];
+  }
+  wsSend('openim.sendmsg', base);
+}
+
 function sendText() {
   if (!activeContact) return;
   const text = $('msg-input').value.trim();
@@ -1181,10 +1274,120 @@ function setStatus(state) {
 
 $('btn-notify').onclick = async () => {
   notificationsOn = !notificationsOn;
-  $('btn-notify').textContent = notificationsOn ? '🔔' : '🔕';
-  $('btn-notify').style.opacity = notificationsOn ? '0.9' : '0.4';
+  $('btn-notify').style.color = notificationsOn ? 'var(--green)' : 'var(--red)';
+  $('btn-notify').classList.toggle('ringing', notificationsOn);
   const s = await invoke('get_settings').catch(()=>({notifications:true,auto_login:true}));
   await invoke('save_settings', { settings: {...s, notifications: notificationsOn} }).catch(()=>{});
+};
+
+// ── File/Image Upload ──
+async function doUpload(file, isImage) {
+  if (!file || !activeContact) return;
+  const fileType = isImage ? 1 : 255;
+  const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'bin';
+  setStatusMsg('⬆ Hashing file...');
+  const buf = await file.arrayBuffer();
+  const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+  const hashArr = Array.from(new Uint8Array(hashBuf));
+  const hashHex = hashArr.map(b => b.toString(16).padStart(2,'0')).join('').substring(0, 32);
+  const hashedName = `${hashHex}-${file.size}.${ext}`;
+  setStatusMsg('⬆ Requesting upload URL...');
+  console.log('[upload] pre_sig sending, a2:', myA2 ? 'YES' : 'NO', 'tinyid:', myTinyId);
+  wsSendNoA2('im_cos_msg.pre_sig', { file_type: fileType, file_name: hashedName, upload_method: 0, Duration: 900 });
+  const uploadHandler = async (ev) => {
+    const data = ev.detail;
+    document.removeEventListener('ws_upload_response', uploadHandler);
+    if (data?.body?.error_code !== 0) { setStatusMsg('❌ Upload error: ' + data?.body?.error_msg); return; }
+    const uploadUrl = data.body.upload_url;
+    const downloadUrl = data.body.download_url;
+    console.log('[upload] pre_sig ok, uploadUrl:', uploadUrl);
+    setStatusMsg('⬆ Uploading ' + file.name + '...');
+    // Fortschrittsbalken starten
+    const progressEl = $('upload-progress');
+    const progressBar = $('upload-progress-bar');
+    progressEl.style.display = 'block';
+    progressBar.style.width = '0%';
+    let pct = 0;
+    const pTimer = setInterval(() => { pct = Math.min(pct + (100 - pct) * 0.08, 92); progressBar.style.width = pct + '%'; }, 200);
+    const bytes = new Uint8Array(buf);
+    let b64 = '';
+    for (let i = 0; i < bytes.length; i += 8192) {
+      b64 += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    }
+    b64 = btoa(b64);
+    invoke('upload_file', { uploadUrl, fileBase64: b64, mimeType: file.type || 'application/octet-stream' })
+      .then(() => {
+        clearInterval(pTimer);
+        progressBar.style.width = '100%';
+        setTimeout(() => { progressEl.style.display = 'none'; progressBar.style.width = '0%'; }, 600);
+        setStatusMsg('✅ Uploaded');
+        const myInfo = userCache[myUid] || {};
+        if (isImage) {
+          sendChatMessage(downloadUrl, 'image', {
+            thumb_url: data.body.thumb_url || downloadUrl,
+            large_url: data.body.large_url || downloadUrl,
+            file_key: data.body.file_key || ''
+          });
+          // Sofort lokal im Chat anzeigen
+          const el = $('chat-messages');
+          el.innerHTML += `<div class="msg-row own">
+            <div class="msg-avatar">${avatarHtml(myInfo.userAvatar||'', myInfo.nickName||myUid, 32)}</div>
+            <div class="msg-c"><div class="bubble"><img src="${downloadUrl}" style="max-width:220px;max-height:220px;border-radius:8px;display:block" onerror="this.alt='🖼'"></div><div class="bubble-time">Now</div></div>
+          </div>`;
+          el.scrollTop = el.scrollHeight;
+        } else {
+          const uuid = `${SDKAPPID}-${myUid}-${Math.random().toString(36).substr(2,16)}`;
+          wsSend('openim.sendmsg', {
+            From_Account: myUid, To_Account: activeContact.id,
+            MsgSeq: Math.floor(Math.random()*4294967295), MsgRandom: Math.floor(Math.random()*4294967295),
+            MsgBody: [{MsgType:'TIMFileElem',MsgContent:{
+              Download_Flag: 2,
+              Url: downloadUrl,
+              UUID: uuid,
+              FileName: file.name,
+              FileSize: file.size
+            }}],
+            CloudCustomData: '',
+            From_AccountNick: myInfo.nickName||myUid, From_AccountHeadurl: myInfo.userAvatar||'',
+            OfflinePushInfo:{PushFlag:0,Title:'',Desc:'',Ext:'',ApnsInfo:{BadgeMode:0},AndroidInfo:{OPPOChannelID:''}},
+            SendMsgControl:[], MsgClientTime:Math.floor(Date.now()/1000), IsNeedReadReceipt:0, SupportMessageExtension:0
+          });
+          const ext2 = file.name.split('.').pop().toUpperCase();
+          const icon2 = ['STL','OBJ','3MF','GCODE'].includes(ext2) ? '🖨️' : '📎';
+          const sizeMB = (file.size/1024/1024).toFixed(2);
+          const el = $('chat-messages');
+          el.innerHTML += `<div class="msg-row own">
+            <div class="msg-avatar">${avatarHtml(myInfo.userAvatar||'', myInfo.nickName||myUid, 32)}</div>
+            <div class="msg-c"><div class="bubble"><div class="model-card" onclick="downloadFile('${esc(downloadUrl)}','${esc(file.name)}')" title="Click to download">
+              <div style="width:64px;height:64px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:28px;">${icon2}</div>
+              <div class="mc-info">
+                <div class="mc-name">${esc(file.name)}</div>
+                <div class="mc-tag">${esc(ext2)} · ${sizeMB} MB</div>
+                <div style="font-size:10px;color:var(--muted);">⬇ Download</div>
+              </div>
+            </div></div><div class="bubble-time">Now</div></div>
+          </div>`;
+          el.scrollTop = el.scrollHeight;
+        }
+      })
+      .catch(e => { clearInterval(pTimer); progressEl.style.display = 'none'; setStatusMsg('❌ Upload failed: ' + e); console.error('Upload error:', e); });
+  };
+  document.addEventListener('ws_upload_response', uploadHandler);
+  setTimeout(() => document.removeEventListener('ws_upload_response', uploadHandler), 15000);
+}
+
+$('btn-image-upload').onclick = () => { if (activeContact) $('image-input').click(); };
+$('image-input').onchange = async () => {
+  const file = $('image-input').files[0];
+  $('image-input').value = '';
+  await doUpload(file, true);
+};
+
+$('btn-file-upload').onclick = () => { if (activeContact) $('file-input').click(); };
+$('file-input').onchange = async () => {
+  const file = $('file-input').files[0];
+  $('file-input').value = '';
+  await doUpload(file, false);
 };
 
 // ── Logout ──

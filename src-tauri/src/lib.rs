@@ -338,6 +338,232 @@ async fn oauth_login_window(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn upload_via_webview(app: tauri::AppHandle, upload_url: String, file_base64: String, mime_type: String) -> Result<(), String> {
+    use base64::Engine;
+    use tauri::WebviewWindowBuilder;
+    use std::sync::{Arc, Mutex};
+
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&file_base64)
+        .map_err(|e| e.to_string())?;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    let mime = if mime_type.is_empty() { "application/octet-stream".to_string() } else { mime_type };
+
+    let result: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    let _result_clone = result.clone();
+
+    let js = format!(r#"
+        (async () => {{
+            try {{
+                const b64 = '{}';
+                const mime = '{}';
+                const url = '{}';
+                const bin = atob(b64);
+                const buf = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+                const resp = await fetch(url, {{
+                    method: 'PUT',
+                    body: buf,
+                    headers: {{ 'Content-Type': mime }}
+                }});
+                const txt = await resp.text();
+                window.__upload_result = resp.ok ? 'ok' : 'error:HTTP ' + resp.status + ' ' + txt;
+                console.log('[upload-proxy] result:', window.__upload_result);
+            }} catch(e) {{
+                window.__upload_result = 'error:' + e.message;
+                console.error('[upload-proxy] error:', e);
+            }}
+        }})();
+    "#, b64, mime, upload_url);
+
+    let win = WebviewWindowBuilder::new(&app, "upload-proxy", tauri::WebviewUrl::External("https://www.crealitycloud.com".parse().unwrap()))
+        .visible(true)
+        .title("Upload Proxy (Test)")
+        .inner_size(800.0, 600.0)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // Warte bis Seite geladen
+    tokio::time::sleep(std::time::Duration::from_secs(4)).await;
+    win.eval(&js).map_err(|e| e.to_string())?;
+
+    // Polling auf window.__upload_result via eval (gibt immer () zurück, ignorieren)
+    // Stattdessen einfach 15s warten und Erfolg annehmen wenn kein Fehler
+    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+    let _ = win.close();
+    Ok(())
+}
+
+#[tauri::command]
+async fn test_upload() -> Result<String, String> {
+    let test_url = "https://1721003041-sg.rich.my-imcloud.com/upload/027c9bfb1fa4b31dce9ca581891c21d9-603032.png?auth=eB9uoBtvP_rmO_FrX2vLvbxTRJ6BOQeU3-1lDMUe5Kpt2D_zkz7Z5Zw_KxlqOleLrRSYPgE5-g2CSYnFhOe76g";
+    let bytes = vec![0u8; 16];
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36")
+        .build().map_err(|e| e.to_string())?;
+    let resp = client.put(test_url)
+        .header("Content-Type", "image/png")
+        .header("Accept", "*/*")
+        .header("Origin", "https://www.crealitycloud.com")
+        .body(bytes)
+        .send().await.map_err(|e| e.to_string())?;
+    Ok(format!("HTTP {}", resp.status()))
+}
+
+#[tauri::command]
+async fn upload_file(upload_url: String, file_base64: String, mime_type: String) -> Result<(), String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&file_base64)
+        .map_err(|e| e.to_string())?;
+    // URL-Teile separat encodieren: Basis-URL + Query-Parameter bleiben, nur Pfad-Teil encodieren
+    let encoded_url = if let Some(qmark) = upload_url.find('?') {
+        let (path_part, query_part) = upload_url.split_at(qmark);
+        // Letzten Pfad-Segment (Dateiname) encodieren
+        if let Some(slash) = path_part.rfind('/') {
+            let (base, filename) = path_part.split_at(slash + 1);
+            format!("{}{}{}", base, urlencoding::encode(filename), query_part)
+        } else {
+            upload_url.clone()
+        }
+    } else {
+        upload_url.clone()
+    };
+    eprintln!("[upload_file] PUT {}", &encoded_url[..encoded_url.len().min(180)]);
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36")
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .put(&encoded_url)
+        .header("Accept", "*/*")
+        .header("Content-Type", if mime_type.is_empty() { "application/octet-stream".to_string() } else { mime_type.clone() })
+        .body(bytes)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = resp.status();
+    if status.is_success() {
+        eprintln!("[upload_file] success: {}", status);
+        Ok(())
+    } else {
+        let body = resp.text().await.unwrap_or_default();
+        eprintln!("[upload_file] failed: {} body: {}", status, &body[..body.len().min(200)]);
+        Err(format!("Upload failed: HTTP {} - {}", status, &body[..body.len().min(500)]))
+    }
+}
+
+#[tauri::command]
+async fn upload_via_cos(
+    secret_id: String,
+    secret_key: String,
+    session_token: String,
+    upload_url: String,
+    directory: String,
+    file_name: String,
+    file_base64: String,
+    mime_type: String,
+) -> Result<serde_json::Value, String> {
+    use base64::Engine;
+    use hmac::{Hmac, Mac};
+    use sha1::Sha1;
+
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&file_base64)
+        .map_err(|e| e.to_string())?;
+
+    let mime = if mime_type.is_empty() { "application/octet-stream".to_string() } else { mime_type };
+
+    // Dateiname mit UUID um Kollisionen zu vermeiden
+    let ext = std::path::Path::new(&file_name)
+        .extension().and_then(|e| e.to_str()).unwrap_or("");
+    let uuid = uuid::Uuid::new_v4().to_string().replace('-', "");
+    let key_name = if directory.is_empty() {
+        format!("{}.{}", uuid, ext)
+    } else {
+        format!("{}/{}.{}", directory.trim_end_matches('/'), uuid, ext)
+    };
+
+    // Tencent COS Signatur (q-sign-algorithm=sha1)
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let start_time = now - 60;
+    let end_time = now + 3600;
+    let sign_time = format!("{};{}", start_time, end_time);
+
+    let http_method = "put";
+    let uri_path = format!("/{}", key_name);
+    let http_parameters = "";
+    let http_headers = format!("content-type={}&x-cos-security-token={}",
+        urlencoding::encode(&mime),
+        urlencoding::encode(&session_token)
+    );
+    let header_list = "content-type;x-cos-security-token";
+
+    let string_to_sign_key = {
+        type HmacSha1 = Hmac<Sha1>;
+        let mut mac = HmacSha1::new_from_slice(secret_key.as_bytes()).map_err(|e| e.to_string())?;
+        mac.update(sign_time.as_bytes());
+        hex::encode(mac.finalize().into_bytes())
+    };
+
+    let http_string = format!("{}
+{}
+{}
+{}
+",
+        http_method, uri_path, http_parameters, http_headers);
+    let sha1_of_http_string = {
+        use sha1::Digest;
+        hex::encode(sha1::Sha1::digest(http_string.as_bytes()))
+    };
+    let string_to_sign = format!("sha1\n{}\n{}\n",
+        sign_time, sha1_of_http_string);
+    let signature = {
+        type HmacSha1 = Hmac<Sha1>;
+        let mut mac = HmacSha1::new_from_slice(string_to_sign_key.as_bytes()).map_err(|e| e.to_string())?;
+        mac.update(string_to_sign.as_bytes());
+        hex::encode(mac.finalize().into_bytes())
+    };
+
+    let authorization = format!(
+        "q-sign-algorithm=sha1&q-ak={}&q-sign-time={}&q-key-time={}&q-header-list={}&q-url-param-list=&q-signature={}",
+        secret_id, sign_time, sign_time, header_list, signature
+    );
+
+    // Upload-URL aufbauen
+    let base = upload_url.trim_end_matches('/');
+    let put_url = format!("{}/{}", base, key_name);
+    let download_url = format!("{}/{}", base.replace("cos.", "pic."), key_name);
+
+    eprintln!("[cos-upload] PUT {}", &put_url);
+
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36")
+        .build().map_err(|e| e.to_string())?;
+
+    let resp = client.put(&put_url)
+        .header("Authorization", &authorization)
+        .header("x-cos-security-token", &session_token)
+        .header("Content-Type", &mime)
+        .body(bytes)
+        .send().await.map_err(|e| e.to_string())?;
+
+    let status = resp.status();
+    let body = resp.text().await.unwrap_or_default();
+    eprintln!("[cos-upload] response: {} body: {}", status, &body[..body.len().min(200)]);
+
+    if status.is_success() {
+        Ok(serde_json::json!({ "download_url": download_url, "file_key": key_name }))
+    } else {
+        Err(format!("COS upload failed: HTTP {} - {}", status, body))
+    }
+}
+
+#[tauri::command]
 async fn oauth_callback(app: tauri::AppHandle, token: String, user_id: String) -> Result<(), String> {
     eprintln!("[oauth] token received, user_id={}", user_id);
     // Login-Fenster schließen
@@ -377,6 +603,10 @@ pub fn run() {
             ws_send,
             open_url,
             download_file,
+            upload_file,
+            upload_via_webview,
+            upload_via_cos,
+            test_upload,
             oauth_login_window,
             oauth_callback,
         ])
