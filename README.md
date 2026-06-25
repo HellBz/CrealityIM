@@ -8,16 +8,16 @@ An unofficial native desktop chat client for **Creality Cloud** messaging, built
 
 ## Screenshots
 
+<p align="center">
+  <img src="screenshot/chat.png" width="720" alt="CrealityIM Chat"/>
+</p>
+
 <table>
   <tr>
-    <td align="center"><img src="screenshot/login.png" width="300" alt="Login"/><br/><sub>Login</sub></td>
-    <td align="center"><img src="screenshot/main.png" width="300" alt="Main"/><br/><sub>Main</sub></td>
-    <td align="center"><img src="screenshot/chat.png" width="300" alt="Chat"/><br/><sub>Chat</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="screenshot/user-search.png" width="300" alt="User Search"/><br/><sub>User Search</sub></td>
-    <td align="center"><img src="screenshot/model-search.png" width="300" alt="Model Search"/><br/><sub>Model Search</sub></td>
-    <td></td>
+    <td align="center"><img src="screenshot/login.png" width="230" alt="Login"/><br/><sub>Login</sub></td>
+    <td align="center"><img src="screenshot/main.png" width="230" alt="Main"/><br/><sub>Main</sub></td>
+    <td align="center"><img src="screenshot/user-search.png" width="230" alt="User Search"/><br/><sub>User Search</sub></td>
+    <td align="center"><img src="screenshot/model-search.png" width="230" alt="Model Search"/><br/><sub>Model Search</sub></td>
   </tr>
 </table>
 
