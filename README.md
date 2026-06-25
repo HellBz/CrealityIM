@@ -78,7 +78,7 @@ npm run tauri dev
 
 MIT
 
-## More Screenshots
+## Screenshots
 
 <table>
   <tr>
