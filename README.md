@@ -6,20 +6,9 @@ An unofficial native desktop chat client for **Creality Cloud** messaging, built
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Version](https://img.shields.io/github/v/release/HellBz/CrealityIM)
 
-## Screenshots
-
 <p align="center">
   <img src="screenshot/chat.png" width="720" alt="CrealityIM Chat"/>
 </p>
-
-<table>
-  <tr>
-    <td align="center"><img src="screenshot/login.png" width="230" alt="Login"/><br/><sub>Login</sub></td>
-    <td align="center"><img src="screenshot/main.png" width="230" alt="Main"/><br/><sub>Main</sub></td>
-    <td align="center"><img src="screenshot/user-search.png" width="230" alt="User Search"/><br/><sub>User Search</sub></td>
-    <td align="center"><img src="screenshot/model-search.png" width="230" alt="Model Search"/><br/><sub>Model Search</sub></td>
-  </tr>
-</table>
 
 ## Features
 
@@ -88,3 +77,14 @@ npm run tauri dev
 ## License
 
 MIT
+
+## More Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="screenshot/login.png" width="230" alt="Login"/><br/><sub>Login</sub></td>
+    <td align="center"><img src="screenshot/main.png" width="230" alt="Main"/><br/><sub>Main</sub></td>
+    <td align="center"><img src="screenshot/user-search.png" width="230" alt="User Search"/><br/><sub>User Search</sub></td>
+    <td align="center"><img src="screenshot/model-search.png" width="230" alt="Model Search"/><br/><sub>Model Search</sub></td>
+  </tr>
+</table>
