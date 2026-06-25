@@ -8,15 +8,20 @@ An unofficial native desktop chat client for **Creality Cloud** messaging, built
 
 ## Screenshots
 
-| Login | Main |
-|---|---|
-| ![Login](screenshot/login.png) | ![Main](screenshot/main.png) |
-
-| Chat | User Search |
-|---|---|
-| ![Chat](screenshot/chat.png) | ![User Search](screenshot/user-search.png) |
-
-![Model Search](screenshot/model-search.png)
+<table>
+  <tr>
+    <td><img src="screenshot/login.png" width="480" alt="Login"/></td>
+    <td><img src="screenshot/main.png" width="480" alt="Main"/></td>
+  </tr>
+  <tr>
+    <td><img src="screenshot/chat.png" width="480" alt="Chat"/></td>
+    <td><img src="screenshot/user-search.png" width="480" alt="User Search"/></td>
+  </tr>
+  <tr>
+    <td><img src="screenshot/model-search.png" width="480" alt="Model Search"/></td>
+    <td></td>
+  </tr>
+</table>
 
 ## Features
 
