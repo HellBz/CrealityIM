@@ -112,42 +112,17 @@ fn save_settings(settings: Value) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
-// ── Native Notifications via WinRT ──
+// ── Native Notifications ──
 
 #[tauri::command]
 fn show_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
-    let _ = (app, &title, &body);
-    #[cfg(target_os = "windows")]
-    {
-        use std::process::Command;
-        use std::os::windows::process::CommandExt;
-        // Installiert → eigene App-ID; sonst PowerShell-ID als Fallback
-        let own_id = "CrealityIM";
-        let app_id = if winreg::RegKey::predef(winreg::enums::HKEY_CURRENT_USER)
-            .open_subkey(format!("SOFTWARE\\Classes\\AppUserModelId\\{}", own_id))
-            .is_ok()
-        {
-            own_id.to_string()
-        } else {
-            "Windows PowerShell".to_string()
-        };
-        let title_esc = title.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;");
-        let body_esc = body.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;");
-        let xml = format!(
-            r#"<toast><visual><binding template="ToastGeneric"><text>{}</text><text>{}</text></binding></visual></toast>"#,
-            title_esc, body_esc
-        );
-        let script = format!(
-            r#"$null=[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime];$null=[Windows.Data.Xml.Dom.XmlDocument,Windows.Data.Xml.Dom.XmlDocument,ContentType=WindowsRuntime];$x=[Windows.Data.Xml.Dom.XmlDocument]::new();$x.LoadXml($env:TOAST_XML);[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{}').Show([Windows.UI.Notifications.ToastNotification]::new($x))"#,
-            app_id
-        );
-        let _ = Command::new("powershell")
-            .args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", &script])
-            .env("TOAST_XML", &xml)
-            .creation_flags(0x08000000)
-            .spawn();
-    }
-    Ok(())
+    use tauri_plugin_notification::NotificationExt;
+    app.notification()
+        .builder()
+        .title(&title)
+        .body(&body)
+        .show()
+        .map_err(|e| e.to_string())
 }
 
 // ── API Commands ──
@@ -581,6 +556,7 @@ pub fn run() {
         .manage(ws::WsSender(std::sync::Mutex::new(None)))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             creality_login,
             im_login,

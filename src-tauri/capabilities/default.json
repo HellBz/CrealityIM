@@ -7,6 +7,12 @@
     "core:default",
     "shell:allow-open",
     "http:default",
-    "http:allow-fetch"
+    "http:allow-fetch",
+    "notification:default",
+    "notification:allow-notify",
+    "notification:allow-show",
+    "notification:allow-request-permission",
+    "notification:allow-is-permission-granted",
+    "notification:allow-check-permissions"
   ]
 }
