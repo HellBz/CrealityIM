@@ -14,12 +14,11 @@ An unofficial native desktop chat client for **Creality Cloud** messaging, built
     <td><img src="screenshot/main.png" width="480" alt="Main"/></td>
   </tr>
   <tr>
-    <td><img src="screenshot/chat.png" width="480" alt="Chat"/></td>
-    <td><img src="screenshot/user-search.png" width="480" alt="User Search"/></td>
+    <td colspan="2" align="center"><img src="screenshot/chat.png" width="480" alt="Chat"/></td>
   </tr>
   <tr>
+    <td><img src="screenshot/user-search.png" width="480" alt="User Search"/></td>
     <td><img src="screenshot/model-search.png" width="480" alt="Model Search"/></td>
-    <td></td>
   </tr>
 </table>
 
