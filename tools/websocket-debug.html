@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrealityIM WebSocket Debug</title>
+<style>
+  :root { --bg:#0d1117; --bg2:#161b22; --bg3:#21262d; --border:#30363d; --text:#c9d1d9; --muted:#8b949e; --green:#238636; --red:#f85149; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; display:flex; height:100vh; overflow:hidden; }
+  #panel { width:540px; min-width:540px; border-right:1px solid var(--border); padding:12px; overflow:auto; display:flex; flex-direction:column; gap:10px; }
+  #panel::-webkit-scrollbar { width:10px; }
+  #panel::-webkit-scrollbar-track { background:var(--bg2); border-radius:4px; }
+  #panel::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+  #panel::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+  #log { flex:1; min-height:0; padding:12px; overflow-y:auto; scroll-behavior:smooth; }
+  #log::-webkit-scrollbar { width:10px; }
+  #log::-webkit-scrollbar-track { background:var(--bg2); border-radius:4px; }
+  #log::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+  #log::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+  .custom-inputs { display:flex; flex-direction:column; gap:6px; }
+  .custom-inputs input { width:100%; }
+  h1 { margin:0 0 6px; font-size:14px; color:var(--green); }
+  label { color:var(--muted); font-size:11px; }
+  input, textarea, select, button { font-family:inherit; font-size:12px; border:1px solid var(--border); border-radius:4px; background:var(--bg2); color:var(--text); padding:6px; outline:none; }
+  input:focus, textarea:focus { border-color:var(--green); }
+  textarea { resize:vertical; min-height:120px; }
+  button { background:var(--green); color:#fff; border:none; cursor:pointer; font-weight:600; }
+  button.secondary { background:var(--bg3); color:var(--text); border:1px solid var(--border); }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  .row { display:flex; gap:8px; }
+  .row input { flex:1; }
+  .msg { border-radius:4px; border-left:3px solid var(--border); overflow:hidden; margin-bottom:6px; }
+  .msg:last-child { margin-bottom:0; }
+  .msg.in { background:rgba(35,134,54,0.12); border-color:var(--green); }
+  .msg.out { background:rgba(88,166,255,0.12); border-color:#58a6ff; }
+  .msg.sys { background:rgba(248,81,73,0.12); border-color:var(--red); color:var(--muted); }
+  .msg-header { height:28px; padding:0 8px; cursor:pointer; display:flex; align-items:center; gap:6px; user-select:none; flex-shrink:0; }
+  .msg-header:hover { background:rgba(255,255,255,0.05); }
+  .msg-body { padding:6px 8px; border-top:1px solid var(--border); white-space:pre-wrap; word-break:break-word; font-size:11px; display:none; }
+  .msg.open .msg-body { display:block; }
+  .msg.open .msg-header::after { content:'▾'; margin-left:auto; color:var(--muted); }
+  .msg-header::after { content:'▸'; margin-left:auto; color:var(--muted); }
+  .ts { color:var(--muted); font-size:10px; }
+  .badge { font-size:9px; font-weight:700; padding:1px 4px; border-radius:3px; text-transform:uppercase; }
+  .badge.in { background:var(--green); color:#fff; }
+  .badge.out { background:#58a6ff; color:#fff; }
+  .badge.sys { background:var(--red); color:#fff; }
+  .connected #status { color:var(--green); }
+  .disconnected #status { color:var(--red); }
+  #status { font-weight:700; }
+  fieldset { border:1px solid var(--border); border-radius:6px; padding:10px; margin:0; display:flex; flex-direction:column; gap:8px; }
+  legend { color:var(--muted); font-size:11px; padding:0 6px; }
+</style>
+</head>
+<body class="disconnected">
+  <div id="panel">
+    <h1>CrealityIM WS Debug</h1>
+    <div class="row"><span id="status">Disconnected</span><span id="heartbeat">HB: off</span></div>
+
+    <fieldset>
+      <legend>WebSocket URL</legend>
+      <input id="ws-url" value="wss://wsssgp.im.qcloud.com/binfo?sdkappid=1721003041&instanceid=debug&random=0&platform=7&host=windows&version=-1&sdkversion=1.7.3&compress=none" />
+    </fieldset>
+
+    <fieldset>
+      <legend>Login via Creality Cloud</legend>
+      <input id="login-uid" placeholder="Creality User ID" />
+      <input id="login-token" placeholder="Creality Token" />
+      <div class="row">
+        <button id="btn-login" class="secondary">Login</button>
+        <button id="btn-copy-from-app" class="secondary">Copy from App</button>
+      </div>
+      <div id="login-hint" style="color:var(--muted);font-size:10px;">Requires <code>node tools/cors_proxy.js</code> or <code>tools/start-cors-proxy.bat</code> running locally. Fallback: copy a2/tinyid from the main app.</div>
+    </fieldset>
+
+    <div class="row">
+      <fieldset style="flex:1;"><legend>a2</legend><input id="ws-a2" placeholder="from wslogin" /></fieldset>
+      <fieldset style="flex:1;"><legend>tinyid</legend><input id="ws-tinyid" placeholder="from wslogin" /></fieldset>
+    </div>
+    <div class="row">
+      <fieldset style="flex:1;"><legend>user_id</legend><input id="ws-uid" placeholder="from login" /></fieldset>
+      <fieldset style="flex:1;"><legend>statusInstId</legend><input id="ws-inst" placeholder="from wslogin" value="0" /></fieldset>
+    </div>
+
+    <div class="row">
+      <button id="btn-connect">Connect</button>
+      <button id="btn-disconnect" class="secondary" disabled>Disconnect</button>
+    </div>
+
+    <fieldset>
+      <legend>Command JSON</legend>
+      <textarea id="cmd-json">{
+  "command": "openim.getroammsg",
+  "body": {
+    "Peer_Account": "123456789",
+    "MaxCnt": 20,
+    "MinTime": 0,
+    "MaxTime": 0,
+    "LastMsgTime": 0,
+    "LastMsgKey": "",
+    "WithRecalledMsg": 1
+  }
+}</textarea>
+      <div class="row">
+        <button id="btn-send">Send</button>
+        <button id="btn-heartbeat" class="secondary">Heartbeat</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Quick commands</legend>
+      <div id="quick-buttons" class="row" style="flex-wrap:wrap;">
+        <button class="secondary" onclick="sendQuick('heartbeat.alive')">heartbeat.alive</button>
+        <button class="secondary" onclick="sendQuick('im_open_status.wslogin')">wslogin</button>
+        <button class="secondary" onclick="sendQuick('im_open_status.set_state')">set_state</button>
+        <button class="secondary" onclick="sendQuick('recentcontact.page_get')">page_get</button>
+        <button class="secondary" onclick="sendQuick('openim.getmsg')">getmsg</button>
+        <button class="secondary" onclick="sendQuick('openim.getroammsg')">getroammsg</button>
+        <button class="secondary" onclick="sendQuick('openim.sendmsg')">sendmsg</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Upload helpers</legend>
+      <div class="row" style="flex-wrap:wrap;">
+        <button class="secondary" onclick="triggerUpload('image')">Upload image</button>
+        <button class="secondary" onclick="triggerUpload('file')">Upload file</button>
+      </div>
+      <input type="file" id="upload-input" style="display:none;" />
+    </fieldset>
+
+    <fieldset>
+      <legend>Command library</legend>
+      <div class="row">
+        <select id="cmd-library" style="flex:1;">
+          <option value="">Select a command...</option>
+        </select>
+        <button id="btn-load-cmd" class="secondary">Load</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Custom commands</legend>
+      <div id="custom-buttons" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      <div class="custom-inputs">
+        <input id="custom-name" placeholder="Name" />
+        <input id="custom-cmd" placeholder="command" />
+        <input id="custom-body" placeholder='{"key":"value"}' />
+        <button id="btn-add-custom">+ Add custom command</button>
+      </div>
+    </fieldset>
+
+    <button id="btn-clear" class="secondary">Clear log</button>
+  </div>
+
+  <div id="log"></div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let ws = null;
+    let seq = 1;
+    let hbTimer = null;
+    let wsSeq = 1;
+    let userSig = '';
+    let reconnectTimer = null;
+    let manualDisconnect = false;
+    let reconnectDelay = 3000;
+
+    // Saved login fields
+    ['login-uid','login-token'].forEach(k => {
+      const v = localStorage.getItem('wsdebug_' + k);
+      if (v) $(k).value = v;
+    });
+    const saveLogin = () => {
+      ['login-uid','login-token'].forEach(k => {
+        localStorage.setItem('wsdebug_' + k, $(k).value);
+      });
+    };
+
+    const log = (type, text, obj) => {
+      const el = document.createElement('div');
+      el.className = 'msg ' + type;
+      const now = new Date().toLocaleTimeString();
+      const header = document.createElement('div');
+      header.className = 'msg-header';
+      header.innerHTML = `<span class="badge ${type}">${type}</span><span>${escapeHtml(text)}</span><span class="ts">${now}</span>`;
+      const body = document.createElement('div');
+      body.className = 'msg-body';
+      body.textContent = obj ? JSON.stringify(obj, null, 2) : '';
+      header.onclick = () => el.classList.toggle('open');
+      el.appendChild(header);
+      if (obj) el.appendChild(body);
+      $('log').appendChild(el);
+      $('log').scrollTop = $('log').scrollHeight;
+    };
+
+    const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    const setStatus = (connected) => {
+      document.body.className = connected ? 'connected' : 'disconnected';
+      $('status').textContent = connected ? 'Connected' : 'Disconnected';
+      $('btn-connect').disabled = connected;
+      $('btn-disconnect').disabled = !connected;
+      $('heartbeat').textContent = connected ? 'HB: on' : 'HB: off';
+    };
+
+    const NO_A2_COMMANDS = ['im_cos_msg.pre_sig', 'im_cos_msg.simple_sig', 'im_cos_msg.get_imageinfo', 'im_cos_msg.video_cover', 'im_cos_msg.get_final_ip'];
+
+    const sendWs = (command, body) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const needA2 = $('ws-a2').value && !NO_A2_COMMANDS.includes(command);
+      const payload = {
+        head: {
+          ver: 'v4',
+          platform: 7,
+          websdkappid: 537048168,
+          websdkversion: '1.7.3',
+          status_instid: Number($('ws-inst').value) || 0,
+          sdkappid: 1721003041,
+          contenttype: 'json',
+          reqtime: Math.floor(Date.now() / 1000),
+          identifier: $('ws-uid').value,
+          usersig: userSig,
+          sdkability: 192371,
+          tjgID: '',
+          servcmd: command,
+          seq: wsSeq++,
+          ...(needA2 ? { a2: $('ws-a2').value, tinyid: $('ws-tinyid').value } : {})
+        },
+        body
+      };
+      ws.send(new TextEncoder().encode(JSON.stringify(payload)).buffer);
+      log('out', command, payload);
+    };
+
+    const sendHeartbeat = () => {
+      sendWs('heartbeat.alive', {});
+    };
+
+    const connectWs = () => {
+      if (ws) ws.close();
+      const url = $('ws-url').value;
+      ws = new WebSocket(url);
+      ws.binaryType = 'arraybuffer';
+      log('sys', 'Connecting to ' + url);
+
+      ws.onopen = () => {
+        setStatus(true);
+        reconnectDelay = 3000;
+        log('sys', 'WebSocket open');
+        sendWs('im_open_status.wslogin', { State: 'Online', is_web_uniapp: 0, InstType: 0 });
+        sendHeartbeat();
+        hbTimer = setInterval(sendHeartbeat, 25000);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const txt = e.data instanceof ArrayBuffer ? new TextDecoder().decode(e.data) : e.data;
+          const data = JSON.parse(txt);
+          log('in', data.head?.servcmd || 'message', data);
+          if (data.head?.servcmd === 'im_open_status.wslogin' && data.body?.A2Key) {
+            $('ws-a2').value = data.body.A2Key || '';
+            $('ws-tinyid').value = data.body.TinyId || '';
+            $('ws-inst').value = data.body.InstId || 0;
+            log('sys', 'A2Key/TinyId extracted from wslogin');
+            // Auto-register: load contacts and sync messages like the app does
+            setTimeout(() => {
+              sendWs('im_open_status.set_state', { State: 'Online' });
+              sendWs('recentcontact.page_get', {
+                From_Account: $('ws-uid').value,
+                TimeStamp: 0, StartIndex: 0,
+                TopTimeStamp: 0, TopStartIndex: 0,
+                OrderType: 1, MsgAssistFlags: 4, AssistFlags: 15
+              });
+              sendWs('openim.getmsg', { Cookie: '', SyncFlag: 0, NeedAbstract: 1, IsOnlineSync: 0, NeedSignaling: 1 });
+            }, 300);
+          }
+        } catch {
+          log('in', e.data);
+        }
+      };
+
+      ws.onclose = () => {
+        setStatus(false);
+        clearInterval(hbTimer);
+        log('sys', 'WebSocket closed');
+        if (!manualDisconnect) {
+          log('sys', `Reconnecting in ${reconnectDelay}ms...`);
+          clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(() => {
+            reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+            connectWs();
+          }, reconnectDelay);
+        }
+      };
+
+      ws.onerror = (e) => {
+        log('sys', 'WebSocket error', e);
+      };
+    };
+
+    $('btn-connect').onclick = () => {
+      manualDisconnect = false;
+      connectWs();
+    };
+
+    $('btn-disconnect').onclick = () => {
+      manualDisconnect = true;
+      clearTimeout(reconnectTimer);
+      if (ws) ws.close();
+      ws = null;
+      clearInterval(hbTimer);
+      setStatus(false);
+    };
+
+    const checkProxy = async () => {
+      try {
+        await fetch('http://localhost:8080/', { method: 'OPTIONS', mode: 'cors' });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    $('btn-login').onclick = async () => {
+      const uid = $('login-uid').value.trim();
+      const token = $('login-token').value.trim();
+      saveLogin();
+      if (!uid || !token) { log('sys', 'Enter Creality User ID and Token'); return; }
+      const proxyOk = await checkProxy();
+      if (!proxyOk) {
+        log('sys', 'CORS proxy not running. Start it with: node tools/cors_proxy.js or tools/start-cors-proxy.bat');
+        return;
+      }
+      log('sys', 'Logging in via local CORS proxy...');
+      try {
+        const res = await fetch('http://localhost:8080/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ uid, token })
+        });
+        const raw = await res.text();
+        log('in', 'im_login raw', raw);
+        let data;
+        try { data = JSON.parse(raw); } catch { data = null; }
+        if (data?.code === 0 && data.result?.userSig) {
+          $('ws-uid').value = uid;
+          userSig = data.result.userSig;
+          log('sys', 'Login OK, connecting WebSocket...');
+          connectWs();
+        } else {
+          log('sys', 'Login failed: ' + JSON.stringify(data));
+        }
+      } catch (e) {
+        log('sys', 'Login error: ' + e.message);
+      }
+    };
+
+    $('btn-copy-from-app').onclick = () => {
+      const raw = prompt('Paste JSON from app console, e.g. {"a2":"...","tinyid":"...","user_id":"..."}');
+      if (!raw) return;
+      try {
+        const obj = JSON.parse(raw);
+        $('ws-a2').value = obj.a2 || obj.A2Key || '';
+        $('ws-tinyid').value = obj.tinyid || obj.TinyId || '';
+        $('ws-uid').value = obj.user_id || obj.uid || '';
+        $('ws-inst').value = obj.instId || obj.statusInstId || 0;
+        log('sys', 'Headers pasted');
+      } catch (e) {
+        log('sys', 'Invalid JSON');
+      }
+    };
+
+    $('btn-send').onclick = () => {
+      try {
+        const json = JSON.parse($('cmd-json').value);
+        sendWs(json.command, json.body);
+      } catch (e) {
+        log('sys', 'Invalid JSON: ' + e.message);
+      }
+    };
+
+    $('btn-heartbeat').onclick = sendHeartbeat;
+    $('btn-clear').onclick = () => $('log').innerHTML = '';
+
+    // Quick commands
+    window.sendQuick = (cmd) => {
+      const bodies = {
+        'heartbeat.alive': {},
+        'im_open_status.wslogin': { State: 'Online', is_web_uniapp: 0, InstType: 0 },
+        'im_open_status.set_state': { State: 'Online' },
+        'recentcontact.page_get': {
+          From_Account: $('ws-uid').value,
+          TimeStamp: 0, StartIndex: 0,
+          TopTimeStamp: 0, TopStartIndex: 0,
+          OrderType: 1, MsgAssistFlags: 4, AssistFlags: 15
+        },
+        'openim.getmsg': { Cookie: '', SyncFlag: 0, NeedAbstract: 1, IsOnlineSync: 0, NeedSignaling: 1 },
+        'openim.getroammsg': { Peer_Account: '', MaxCnt: 20, MinTime: 0, MaxTime: 0, LastMsgTime: 0, LastMsgKey: '', WithRecalledMsg: 1 },
+        'openim.sendmsg': { From_Account: $('ws-uid').value, To_Account: '', MsgBody: [{ MsgType: 'TIMTextElem', MsgContent: { Text: 'hello' } }] }
+      };
+      sendWs(cmd, bodies[cmd] || {});
+    };
+
+    // Upload helpers
+    window.triggerUpload = (type) => {
+      const input = $('upload-input');
+      input.accept = type === 'image' ? 'image/*' : '*';
+      input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        const isImage = type === 'image';
+        const fileType = isImage ? 1 : 255;
+        const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'bin';
+        const hashBuf = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+        const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('').substring(0, 32);
+        const hashedName = `${hashHex}-${file.size}.${ext}`;
+        sendWs('im_cos_msg.pre_sig', { file_type: fileType, file_name: hashedName, upload_method: 0, Duration: 900 });
+        log('sys', `Selected ${type}: ${file.name} -> ${hashedName}. Sent im_cos_msg.pre_sig to get upload URL.`);
+        input.value = '';
+      };
+      input.click();
+    };
+
+    // Command library
+    const COMMAND_LIBRARY = [
+      "StreamMsg.AckHttp","StreamMsg.GetStreamHttp",
+      "group_member_search.query","group_open_attr_http_svc.get_group_attr",
+      "group_open_avchatroom_http_svc.get_members","group_open_avchatroom_http_svc.modify_user_info",
+      "group_open_http_svc.add_group_member","group_open_http_svc.apply_join_group",
+      "group_open_http_svc.ban_group_member","group_open_http_svc.change_group_owner",
+      "group_open_http_svc.clear_group_attr","group_open_http_svc.create_group",
+      "group_open_http_svc.delete_group_attr","group_open_http_svc.delete_group_member",
+      "group_open_http_svc.delete_group_ramble_msg_by_seq","group_open_http_svc.destroy_group",
+      "group_open_http_svc.get_group_counter","group_open_http_svc.get_group_member_info",
+      "group_open_http_svc.get_group_msg_receipt","group_open_http_svc.get_group_msg_receipt_detail",
+      "group_open_http_svc.get_group_public_info","group_open_http_svc.get_group_self_member_info",
+      "group_open_http_svc.get_huge_group_msg","group_open_http_svc.get_joined_group_list",
+      "group_open_http_svc.get_online_member_num","group_open_http_svc.get_pendency",
+      "group_open_http_svc.get_pinned_messages","group_open_http_svc.get_specified_group_member_info",
+      "group_open_http_svc.group_msg_get","group_open_http_svc.group_msg_recall",
+      "group_open_http_svc.group_msg_receipt","group_open_http_svc.handle_apply_join_group",
+      "group_open_http_svc.handle_invite_join_permission_group","group_open_http_svc.modify_group_attr",
+      "group_open_http_svc.modify_group_base_info","group_open_http_svc.modify_group_member_info",
+      "group_open_http_svc.msg_read_report","group_open_http_svc.pin_message",
+      "group_open_http_svc.quit_group","group_open_http_svc.send_group_msg",
+      "group_open_http_svc.set_group_attr","group_open_http_svc.unpin_message",
+      "group_open_http_svc.update_group_counter","group_open_long_polling_http_noauth_svc.get_msg",
+      "group_open_long_polling_http_svc.get_msg","group_search.query","heartbeat.alive",
+      "im_cos_msg.get_final_ip","im_cos_msg.get_imageinfo","im_cos_msg.pre_sig","im_cos_msg.simple_sig","im_cos_msg.video_cover",
+      "im_long_msg.get_relay_json_msg","im_long_msg.save_relay_json_msg",
+      "im_msg_db_logic.ws_get_do_not_disturb","im_msg_db_logic.ws_set_do_not_disturb",
+      "im_open_push.msg_push","im_open_push.multi_msg_push_ws",
+      "im_open_speech.ws_sentence_recognition","im_open_status.stat_forceoffline",
+      "im_open_status.ws_get_user_status","im_open_status.ws_set_custom_status",
+      "im_open_status.ws_status_subscribe","im_open_status.ws_status_unsubscribe",
+      "im_open_status.wshello","im_open_status.wslogin","im_open_status.wslogout",
+      "im_open_translate.ws_batch_trans_text","message_search.query",
+      "openim.c2c_msg_read_receipt","openim.delete_c2c_msg_ramble","openim.deletemsg",
+      "openim.get_c2c_peer_mute_notifications","openim.get_peer_read_time","openim.getmsg",
+      "openim.getroammsg","openim.modify_c2c_msg","openim.modify_group_msg",
+      "openim.msgreaded","openim.msgwithdraw","openim.read_all_unread_msg",
+      "openim.sendmsg","openim.set_c2c_peer_mute_notifications","openim.ws_msg_push_ack",
+      "openim_msg_ext_http_svc.get_key_values","openim_msg_ext_http_svc.group_get_key_values",
+      "openim_msg_ext_http_svc.group_reaction_add","openim_msg_ext_http_svc.group_reaction_del",
+      "openim_msg_ext_http_svc.group_reaction_iterate","openim_msg_ext_http_svc.group_reaction_multi_stat",
+      "openim_msg_ext_http_svc.group_set_key_values","openim_msg_ext_http_svc.reaction_add",
+      "openim_msg_ext_http_svc.reaction_del","openim_msg_ext_http_svc.reaction_iterate",
+      "openim_msg_ext_http_svc.reaction_multi_stat","openim_msg_ext_http_svc.set_key_values",
+      "profile.portrait_get_all","profile.portrait_set",
+      "recentcontact.batch_delete","recentcontact.clear_msg","recentcontact.page_get","recentcontact.top",
+      "user_search.query"
+    ];
+
+    const COMMAND_TEMPLATES = {
+      'heartbeat.alive': {},
+      'im_open_status.wslogin': { State: 'Online', is_web_uniapp: 0, InstType: 0 },
+      'im_open_status.wslogout': {},
+      'im_open_status.set_state': { State: 'Online' },
+      'im_open_status.ws_get_user_status': { To_Account: [''] },
+      'im_open_status.ws_set_custom_status': { CustomStatus: '' },
+      'im_open_status.ws_status_subscribe': { To_Account: [''] },
+      'im_open_status.ws_status_unsubscribe': { To_Account: [''] },
+      'recentcontact.page_get': { From_Account: '', TimeStamp: 0, StartIndex: 0, TopTimeStamp: 0, TopStartIndex: 0, OrderType: 1, MsgAssistFlags: 4, AssistFlags: 15 },
+      'recentcontact.batch_delete': { SessionItem: [{ To_Account: '', Type: 1 }] },
+      'recentcontact.clear_msg': { From_Account: '', To_Account: '', Type: 1 },
+      'recentcontact.top': { From_Account: '', To_Account: '', Type: 1, TopFlags: 1 },
+      'openim.getmsg': { Cookie: '', SyncFlag: 0, NeedAbstract: 1, IsOnlineSync: 0, NeedSignaling: 1 },
+      'openim.getroammsg': { Peer_Account: '', MaxCnt: 20, MinTime: 0, MaxTime: 0, LastMsgTime: 0, LastMsgKey: '', WithRecalledMsg: 1 },
+      'openim.sendmsg': { From_Account: '', To_Account: '', MsgBody: [{ MsgType: 'TIMTextElem', MsgContent: { Text: 'hello' } }] },
+      'openim.deletemsg': { From_Account: '', To_Account: '', MsgSeq: 0, MsgRandom: 0 },
+      'openim.msgwithdraw': { From_Account: '', To_Account: '', MsgSeq: 0, MsgRandom: 0 },
+      'openim.msgreaded': { Peer_Account: '', MsgSeq: 0 },
+      'openim.read_all_unread_msg': { From_Account: '', To_Account: '', TimeStamp: 0 },
+      'openim.get_peer_read_time': { To_Account: [''] },
+      'openim.set_c2c_peer_mute_notifications': { To_Account: '', C2CMsgMute: 1 },
+      'openim.get_c2c_peer_mute_notifications': { To_Account: [''] },
+      'openim.c2c_msg_read_receipt': { Peer_Account: '', MsgSeq: 0 },
+      'openim.delete_c2c_msg_ramble': { From_Account: '', To_Account: '', MsgSeq: 0 },
+      'openim.modify_c2c_msg': { From_Account: '', To_Account: '', MsgSeq: 0, MsgRandom: 0, MsgTime: 0, MsgType: 'TIMTextElem', MsgBody: [{ MsgType: 'TIMTextElem', MsgContent: { Text: '' } }] },
+      'openim.modify_group_msg': { GroupId: '', MsgSeq: 0, MsgBody: [{ MsgType: 'TIMTextElem', MsgContent: { Text: '' } }] },
+      'group_open_http_svc.send_group_msg': { GroupId: '', From_Account: '', MsgBody: [{ MsgType: 'TIMTextElem', MsgContent: { Text: 'hello' } }] },
+      'group_open_http_svc.get_group_public_info': { GroupId: [''] },
+      'group_open_http_svc.get_joined_group_list': { Limit: 100, Next: 0, GroupType: '', WithNoActiveGroups: 0 },
+      'group_open_http_svc.create_group': { Type: 'Public', Name: 'TestGroup', MemberList: [{ Member_Account: '' }] },
+      'profile.portrait_get_all': { From_Account: '', UserItem: [{ To_Account: '', CustomSequence: 0, StandardSequence: 0 }] },
+      'profile.portrait_set': { From_Account: '', ProfileItem: [{ Tag: 'Tag_Profile_IM_Nick', Value: '' }] },
+      'message_search.query': { SearchType: 1, Keyword: '', TimePeriod: 0, PageSize: 20, PageIndex: 0 },
+      'user_search.query': { Keyword: '', PageSize: 20 },
+      'group_search.query': { Keyword: '', PageSize: 20 },
+      'im_cos_msg.pre_sig': { file_type: 1, file_name: 'hash-size.jpg', upload_method: 0, Duration: 900 },
+      'im_cos_msg.simple_sig': { file_type: 255, file_name: 'hash-size.zip', upload_method: 0, Duration: 900 },
+      'im_cos_msg.get_imageinfo': { url: '' },
+      'im_cos_msg.video_cover': { video_url: '' },
+      'im_cos_msg.get_final_ip': {}
+    };
+
+    const lib = $('cmd-library');
+    COMMAND_LIBRARY.forEach(cmd => {
+      const opt = document.createElement('option');
+      opt.value = cmd;
+      opt.textContent = cmd;
+      lib.appendChild(opt);
+    });
+    $('btn-load-cmd').onclick = () => {
+      const cmd = lib.value;
+      if (!cmd) return;
+      const body = COMMAND_TEMPLATES[cmd] || {};
+      $('cmd-json').value = JSON.stringify({ command: cmd, body }, null, 2);
+    };
+
+    // Custom commands
+    const loadCustomButtons = () => {
+      const list = JSON.parse(localStorage.getItem('wsdebug_custom') || '[]');
+      const el = $('custom-buttons');
+      el.innerHTML = '';
+      list.forEach((c, i) => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;align-items:center;gap:2px;';
+        const btn = document.createElement('button');
+        btn.className = 'secondary';
+        btn.textContent = c.name || c.cmd;
+        btn.onclick = () => {
+          try { sendWs(c.cmd, JSON.parse(c.body || '{}')); }
+          catch (e) { log('sys', 'Invalid custom body: ' + e.message); }
+        };
+        const del = document.createElement('button');
+        del.textContent = '×';
+        del.style.cssText = 'background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0 4px;';
+        del.onclick = () => {
+          list.splice(i, 1);
+          localStorage.setItem('wsdebug_custom', JSON.stringify(list));
+          loadCustomButtons();
+        };
+        wrap.appendChild(btn);
+        wrap.appendChild(del);
+        el.appendChild(wrap);
+      });
+    };
+    loadCustomButtons();
+
+    $('btn-add-custom').onclick = () => {
+      const name = $('custom-name').value.trim();
+      const cmd = $('custom-cmd').value.trim();
+      const body = $('custom-body').value.trim();
+      if (!cmd) { log('sys', 'Command required'); return; }
+      const list = JSON.parse(localStorage.getItem('wsdebug_custom') || '[]');
+      list.push({ name, cmd, body });
+      localStorage.setItem('wsdebug_custom', JSON.stringify(list));
+      $('custom-name').value = '';
+      $('custom-cmd').value = '';
+      $('custom-body').value = '';
+      loadCustomButtons();
+    };
+  </script>
+</body>
+</html>

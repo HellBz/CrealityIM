@@ -13,3 +13,8 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# WebSocket debug tool temp/sdk files (do not commit downloaded/generated SDK)
+tools/standard.js
+tools/standard.readable.js
+tools/extract_cmds.js
