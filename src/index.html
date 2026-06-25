@@ -291,6 +291,7 @@
 <script type="module">
 import { invoke } from 'https://unpkg.com/@tauri-apps/api@2/core';
 import { listen } from 'https://unpkg.com/@tauri-apps/api@2/event';
+document.addEventListener('contextmenu', e => e.preventDefault());
 function openLink(url) {
   if (!url || url === '#') return;
   invoke('open_url', { url }).catch(() => { window.open(url, '_blank'); });
