@@ -375,7 +375,7 @@ function openLightbox(url) {
   const viewUrl = toCloudImageUrl(url);
   $('lightbox-img').src = viewUrl;
   $('lightbox-link').href = viewUrl;
-  $('lightbox-link').onclick = e => { e.preventDefault(); openLink(viewUrl); };
+  $('lightbox-link').onclick = e => { e.preventDefault(); invoke('open_url', { url: viewUrl }).catch(() => { window.open(viewUrl, '_blank'); }); };
   $('lightbox').classList.add('open');
 }
 
