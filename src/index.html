@@ -308,10 +308,12 @@
 <!-- Link Dialog -->
 <div id="link-dialog">
   <div id="link-box">
-    <div id="link-box-header">
+    <div id="link-box-header" style="justify-content:center;">
       <span>Open link?</span>
-      <button onclick="closeLinkDialog()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button>
+      <button onclick="closeLinkDialog()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;position:absolute;right:16px;">✕</button>
     </div>
+    <div id="link-preview-name" style="display:none;padding:12px 16px;font-size:16px;font-weight:600;color:var(--text);text-align:center;border-bottom:1px solid var(--border);"></div>
+    <img id="link-preview-img" style="display:none;width:100%;max-height:300px;object-fit:contain;background:var(--bg2);" />
     <div id="link-url" style="padding:12px 16px;font-size:12px;color:var(--muted);word-break:break-all;border-bottom:1px solid var(--border);"></div>
     <div style="padding:12px 16px;display:flex;gap:8px;justify-content:flex-end;">
       <button onclick="closeLinkDialog()" style="padding:8px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-family:inherit;font-size:13px;">Cancel</button>
@@ -346,10 +348,23 @@ import { getVersion } from 'https://unpkg.com/@tauri-apps/api@2/app';
 document.addEventListener('contextmenu', e => e.preventDefault());
 getVersion().then(v => { const el = $('app-version'); if (el) el.textContent = 'v' + v; }).catch(() => {});
 let pendingLinkUrl = '';
-function openLink(url) {
+function openLink(url, modelName = '', coverUrl = '') {
   if (!url || url === '#') return;
   pendingLinkUrl = url;
   $('link-url').textContent = url;
+  // Für Model-Card: Bild und Name anzeigen
+  const previewImg = document.getElementById('link-preview-img');
+  const previewName = document.getElementById('link-preview-name');
+  if (modelName || coverUrl) {
+    previewImg.style.display = 'block';
+    previewImg.src = coverUrl || '';
+    previewImg.onerror = () => previewImg.style.display = 'none';
+    previewName.style.display = 'block';
+    previewName.textContent = modelName;
+  } else {
+    previewImg.style.display = 'none';
+    previewName.style.display = 'none';
+  }
   $('link-dialog').classList.add('open');
 }
 function confirmOpenLink() {
@@ -627,7 +642,7 @@ async function init() {
   if (creds && creds.user_id) {
     $('inp-uid').value = creds.user_id;
     $('saved-hint').style.display = 'block';
-    $('saved-hint').textContent = `Saved: ${creds.email || creds.user_id} – Click for Auto-Login`;
+    $('saved-hint').textContent = `Saved: ${creds.user_id} – Click for Auto-Login`;
     if (settings.auto_login !== false) doAutoLogin(creds);
   }
 }
@@ -685,7 +700,7 @@ async function _oauthHandleToken(token, userId) {
     const r = await invoke('im_login', { token, userId: userId || '', cookieStr: '' });
     if (r?.code === 0 && r.result?.userSig) {
       const uid = r.result?.imUserInfoVO?.userId ? String(r.result.imUserInfoVO.userId) : userId;
-      await invoke('save_credentials', { userId: uid, token, email: '' }).catch((e)=>{ console.error('save_credentials failed:', e); });
+      await invoke('save_credentials', { userId: uid, token }).catch((e)=>{ console.error('save_credentials failed:', e); });
       setErr('');
       startApp(token, uid, r.result.userSig);
     } else {
@@ -713,7 +728,7 @@ $('loginBtn').onclick = async () => {
     const r = await invoke('im_login', { token, userId: uid, cookieStr: '' });
     $('loginBtn').disabled = false;
     if (r?.code === 0 && r.result?.userSig) {
-      await invoke('save_credentials', { userId: uid, token, email: '' }).catch(()=>{});
+      await invoke('save_credentials', { userId: uid, token }).catch(()=>{});
       setErr('');
       startApp(token, uid, r.result.userSig);
     } else {
@@ -1265,7 +1280,7 @@ function renderMsgContent(msgBody) {
 
 function renderModelCardHtml(name, coverUrl, modelId) {
   const link = modelId ? `https://www.crealitycloud.com/model-detail/${modelId}` : '#';
-  return `<div class="model-card" onclick="openLink('${esc(link)}')">${coverUrl
+  return `<div class="model-card" onclick="openLink('${esc(link)}','${esc(name)}','${esc(coverUrl)}')">${coverUrl
       ? `<img src="${esc(coverUrl)}" onerror="this.style.display='none'" style="width:64px;height:64px;border-radius:6px;object-fit:cover;flex-shrink:0;"/>`
       : `<div style="width:56px;height:56px;min-width:56px;background:var(--bg3);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>`}
     <div class="mc-info"><div class="mc-name">${esc(name)}</div><div class="mc-tag">3D Model</div><div style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:3px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Open in browser</div></div>
@@ -1306,13 +1321,17 @@ $('msg-input').oninput = function() { this.style.height='auto'; this.style.heigh
 function sendChatMessage(content, type, extraData) {
   if (!activeContact) return;
   const myInfo = userCache[myUid] || {};
+  const msgSeq = Math.floor(Math.random()*4294967295);
+  const msgRandom = Math.floor(Math.random()*4294967295);
+  const msgTs = Math.floor(Date.now()/1000);
+  const msgKey = `${msgSeq}_${msgRandom}_${msgTs}`;
   const base = {
     From_Account: myUid, To_Account: activeContact.id,
-    MsgSeq: Math.floor(Math.random()*4294967295), MsgRandom: Math.floor(Math.random()*4294967295),
+    MsgSeq: msgSeq, MsgRandom: msgRandom,
     CloudCustomData: '',
     From_AccountNick: myInfo.nickName||myUid, From_AccountHeadurl: myInfo.userAvatar||'',
     OfflinePushInfo: {PushFlag:0,Title:'',Desc:'',Ext:'',ApnsInfo:{BadgeMode:0},AndroidInfo:{OPPOChannelID:''}},
-    SendMsgControl:[], MsgClientTime:Math.floor(Date.now()/1000), IsNeedReadReceipt:0, SupportMessageExtension:0
+    SendMsgControl:[], MsgClientTime:msgTs, IsNeedReadReceipt:0, SupportMessageExtension:0
   };
   if (type === 'image') {
     const d = extraData || {};
@@ -1329,6 +1348,7 @@ function sendChatMessage(content, type, extraData) {
     base.MsgBody = [{MsgType:'TIMTextElem',MsgContent:{Text:content}}];
   }
   wsSend('openim.sendmsg', base);
+  return { msgSeq, msgRandom, msgTs, msgKey };
 }
 
 function sendText() {
@@ -1336,20 +1356,26 @@ function sendText() {
   const text = $('msg-input').value.trim();
   if (!text) return;
   const myInfo = userCache[myUid] || {};
+  const msgSeq = Math.floor(Math.random()*4294967295);
+  const msgRandom = Math.floor(Math.random()*4294967295);
+  const msgTs = Math.floor(Date.now()/1000);
+  const msgKey = `${msgSeq}_${msgRandom}_${msgTs}`;
   wsSend('openim.sendmsg', {
     From_Account: myUid, To_Account: activeContact.id,
-    MsgSeq: Math.floor(Math.random()*4294967295), MsgRandom: Math.floor(Math.random()*4294967295),
+    MsgSeq: msgSeq, MsgRandom: msgRandom,
     MsgBody: [{MsgType:'TIMTextElem',MsgContent:{Text:text}}],
     CloudCustomData: '',
     From_AccountNick: myInfo.nickName||myUid, From_AccountHeadurl: myInfo.userAvatar||'',
     OfflinePushInfo: {PushFlag:0,Title:'',Desc:'',Ext:'',ApnsInfo:{BadgeMode:0},AndroidInfo:{OPPOChannelID:''}},
-    SendMsgControl:[], MsgClientTime:Math.floor(Date.now()/1000), IsNeedReadReceipt:0, SupportMessageExtension:0
+    SendMsgControl:[], MsgClientTime:msgTs, IsNeedReadReceipt:0, SupportMessageExtension:0
   });
   const el = $('chat-messages');
   const bubbleContent = isPlainUrl(text) ? renderLinkPreviewCard(text) : linkify(esc(text));
+  const recallBtn = `<button class="msg-del-btn" onclick="recallMsg('${msgSeq}','${msgRandom}','${msgTs}','${myUid}','${activeContact.id}',this)" title="Recall (for everyone)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>`;
+  const delBtn = `<button class="msg-del-btn" onclick="deleteMsg('${msgKey}','${myUid}','${activeContact.id}',this)" title="Delete locally"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
   el.innerHTML += `<div class="msg-row own">
     <div class="msg-avatar">${avatarHtml(myInfo.userAvatar||'', myInfo.nickName||myUid, 32)}</div>
-    <div class="msg-c"><div class="bubble">${bubbleContent}</div><div class="bubble-time">Now</div></div>
+    <div class="msg-c"><div class="bubble">${bubbleContent}</div><div class="bubble-time">Now${recallBtn}${delBtn}</div></div>
   </div>`;
   el.scrollTop = el.scrollHeight;
   $('msg-input').value = '';
@@ -1376,16 +1402,22 @@ $('btn-model').onclick = async () => {
       type:'modelCard', version:1, businessID:'cxy_model_latest_browse',
       modelId: m.modelId, groupName: m.groupName, coverUrl, urlAlias:''
     });
+    const msgSeq = Math.floor(Date.now()/1000);
+    const msgRandom = Math.floor(Math.random()*2147483647);
+    const msgTs = Math.floor(Date.now()/1000);
+    const msgKey = `${msgSeq}_${msgRandom}_${msgTs}`;
     wsSend('openim.sendmsg', {
       From_Account: myUid, To_Account: activeContact.id,
-      MsgSeq: Math.floor(Date.now()/1000), MsgRandom: Math.floor(Math.random()*2147483647),
+      MsgSeq: msgSeq, MsgRandom: msgRandom,
       MsgBody: [{MsgType:'TIMCustomElem',MsgContent:{Data:data,Desc:'',Ext:''}}],
       CloudCustomData:'', OfflinePushInfo:{PushFlag:0,Title:'',Desc:m.groupName,Ext:''}
     });
     const el = $('chat-messages');
+    const recallBtn = `<button class="msg-del-btn" onclick="recallMsg('${msgSeq}','${msgRandom}','${msgTs}','${myUid}','${activeContact.id}',this)" title="Recall (for everyone)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>`;
+    const delBtn = `<button class="msg-del-btn" onclick="deleteMsg('${msgKey}','${myUid}','${activeContact.id}',this)" title="Delete locally"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
     el.innerHTML += `<div class="msg-row own">
       <div class="msg-avatar">${avatarHtml(userCache[myUid]?.userAvatar||'',userCache[myUid]?.nickName||myUid,32)}</div>
-      <div class="msg-c"><div class="bubble">${renderModelCardHtml(m.groupName, coverUrl, m.modelId)}</div><div class="bubble-time">now</div></div>
+      <div class="msg-c"><div class="bubble">${renderModelCardHtml(m.groupName, coverUrl, m.modelId)}</div><div class="bubble-time">now${recallBtn}${delBtn}</div></div>
     </div>`;
     el.scrollTop = el.scrollHeight;
     setStatusMsg('Model shared ✓');
@@ -1529,23 +1561,30 @@ async function doUpload(file, isImage) {
         setStatusMsg('✅ Uploaded');
         const myInfo = userCache[myUid] || {};
         if (isImage) {
-          sendChatMessage(downloadUrl, 'image', {
+          const msgInfo = sendChatMessage(downloadUrl, 'image', {
             thumb_url: data.body.thumb_url || downloadUrl,
             large_url: data.body.large_url || downloadUrl,
             file_key: data.body.file_key || ''
           });
           // Sofort lokal im Chat anzeigen
           const el = $('chat-messages');
+          const viewUrl = toCloudImageUrl(downloadUrl);
+          const recallBtn = `<button class="msg-del-btn" onclick="recallMsg('${msgInfo.msgSeq}','${msgInfo.msgRandom}','${msgInfo.msgTs}','${myUid}','${activeContact.id}',this)" title="Recall (for everyone)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>`;
+          const delBtn = `<button class="msg-del-btn" onclick="deleteMsg('${msgInfo.msgKey}','${myUid}','${activeContact.id}',this)" title="Delete locally"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
           el.innerHTML += `<div class="msg-row own">
             <div class="msg-avatar">${avatarHtml(myInfo.userAvatar||'', myInfo.nickName||myUid, 32)}</div>
-            <div class="msg-c"><div class="bubble"><img src="${downloadUrl}" style="max-width:220px;max-height:220px;border-radius:8px;display:block" onerror="this.alt='🖼'"></div><div class="bubble-time">Now</div></div>
+            <div class="msg-c"><div class="bubble"><img src="${esc(downloadUrl)}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;cursor:zoom-in" onclick="openLightbox('${esc(viewUrl)}')" onerror="this.alt='🖼'"></div><div class="bubble-time">Now${recallBtn}${delBtn}</div></div>
           </div>`;
           el.scrollTop = el.scrollHeight;
         } else {
+          const msgSeq = Math.floor(Math.random()*4294967295);
+          const msgRandom = Math.floor(Math.random()*4294967295);
+          const msgTs = Math.floor(Date.now()/1000);
+          const msgKey = `${msgSeq}_${msgRandom}_${msgTs}`;
           const uuid = `${SDKAPPID}-${myUid}-${Math.random().toString(36).substr(2,16)}`;
           wsSend('openim.sendmsg', {
             From_Account: myUid, To_Account: activeContact.id,
-            MsgSeq: Math.floor(Math.random()*4294967295), MsgRandom: Math.floor(Math.random()*4294967295),
+            MsgSeq: msgSeq, MsgRandom: msgRandom,
             MsgBody: [{MsgType:'TIMFileElem',MsgContent:{
               Download_Flag: 2,
               Url: downloadUrl,
@@ -1556,7 +1595,7 @@ async function doUpload(file, isImage) {
             CloudCustomData: '',
             From_AccountNick: myInfo.nickName||myUid, From_AccountHeadurl: myInfo.userAvatar||'',
             OfflinePushInfo:{PushFlag:0,Title:'',Desc:'',Ext:'',ApnsInfo:{BadgeMode:0},AndroidInfo:{OPPOChannelID:''}},
-            SendMsgControl:[], MsgClientTime:Math.floor(Date.now()/1000), IsNeedReadReceipt:0, SupportMessageExtension:0
+            SendMsgControl:[], MsgClientTime:msgTs, IsNeedReadReceipt:0, SupportMessageExtension:0
           });
           const ext2 = file.name.split('.').pop().toUpperCase();
           const iconSvg2 = (() => {
@@ -1571,6 +1610,8 @@ async function doUpload(file, isImage) {
           })();
           const sizeStr = formatSize(file.size);
           const el = $('chat-messages');
+          const recallBtn = `<button class="msg-del-btn" onclick="recallMsg('${msgSeq}','${msgRandom}','${msgTs}','${myUid}','${activeContact.id}',this)" title="Recall (for everyone)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>`;
+          const delBtn = `<button class="msg-del-btn" onclick="deleteMsg('${msgKey}','${myUid}','${activeContact.id}',this)" title="Delete locally"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
           el.innerHTML += `<div class="msg-row own">
             <div class="msg-avatar">${avatarHtml(myInfo.userAvatar||'', myInfo.nickName||myUid, 32)}</div>
             <div class="msg-c"><div class="bubble"><div class="model-card" onclick="promptDownloadFile('${esc(downloadUrl)}','${esc(file.name)}','${esc(sizeStr)}')" title="Click to download">
@@ -1580,7 +1621,7 @@ async function doUpload(file, isImage) {
                 <div class="mc-tag">${esc(ext2)} · ${sizeStr}</div>
                 <div style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:3px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download</div>
               </div>
-            </div></div><div class="bubble-time">Now</div></div>
+            </div></div><div class="bubble-time">Now${recallBtn}${delBtn}</div></div>
           </div>`;
           el.scrollTop = el.scrollHeight;
         }

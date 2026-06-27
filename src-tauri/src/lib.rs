@@ -5,6 +5,19 @@ use serde_json::{json, Value};
 use std::path::PathBuf;
 use tauri::{Emitter, Manager};
 
+// Debug-Only Logging Macro - nur im Debug-Build aktiv
+#[cfg(debug_assertions)]
+macro_rules! debug_log {
+    ($($arg:tt)*) => {
+        eprintln!($($arg)*);
+    };
+}
+
+#[cfg(not(debug_assertions))]
+macro_rules! debug_log {
+    ($($arg:tt)*) => {};
+}
+
 fn app_data_dir() -> PathBuf {
     let base = std::env::var("APPDATA")
         .map(PathBuf::from)
@@ -19,8 +32,8 @@ fn app_data_dir() -> PathBuf {
 const KEYRING_SERVICE: &str = "CrealityIM";
 
 #[tauri::command]
-fn save_credentials(user_id: String, token: String, email: String) -> Result<(), String> {
-    let data = json!({"user_id": user_id, "token": token, "email": email}).to_string();
+fn save_credentials(user_id: String, token: String) -> Result<(), String> {
+    let data = json!({"user_id": user_id, "token": token}).to_string();
     keyring::Entry::new(KEYRING_SERVICE, "credentials")
         .map_err(|e| e.to_string())?
         .set_password(&data)
@@ -129,11 +142,6 @@ fn show_notification(app: tauri::AppHandle, title: String, body: String) -> Resu
 // ── API Commands ──
 
 #[tauri::command]
-async fn creality_login(email: String, password: String) -> Result<Value, String> {
-    api::creality_login(&email, &password).await.map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 async fn im_login(token: String, user_id: String, cookie_str: String) -> Result<Value, String> {
     api::im_login(&token, &user_id, &cookie_str).await.map_err(|e| e.to_string())
 }
@@ -228,6 +236,24 @@ async fn download_file(url: String, filename: String) -> Result<String, String> 
 // ── OAuth Login via id.creality.com ──
 
 #[tauri::command]
+async fn oauth_token_received(app: tauri::AppHandle, token: String, user_id: String) -> Result<(), String> {
+    debug_log!("[oauth] Token received from WebView, userId={}", user_id);
+    if let Some(win) = app.get_webview_window("oauth-login") {
+        let _ = win.close();
+    }
+    if let Some(main) = app.get_webview_window("main") {
+        let js = format!(
+            "window._oauthLogin && window._oauthLogin({}, {});",
+            serde_json::json!(token),
+            serde_json::json!(user_id)
+        );
+        let _ = main.eval(&js);
+        main.emit("oauth_token", serde_json::json!({"token": token, "userId": user_id})).ok();
+    }
+    Ok(())
+}
+
+#[tauri::command]
 async fn oauth_login_window(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::{WebviewWindowBuilder, Manager};
 
@@ -245,7 +271,7 @@ async fn oauth_login_window(app: tauri::AppHandle) -> Result<(), String> {
     let _ = std::fs::remove_dir_all(&tmp_profile);
     std::fs::create_dir_all(&tmp_profile).ok();
 
-    let _win = WebviewWindowBuilder::new(&app, "oauth-login", tauri::WebviewUrl::External(login_url.parse().unwrap()))
+    let win = WebviewWindowBuilder::new(&app, "oauth-login", tauri::WebviewUrl::External(login_url.parse().unwrap()))
         .title("Sign in with Creality")
         .inner_size(500.0, 700.0)
         .center()
@@ -254,136 +280,53 @@ async fn oauth_login_window(app: tauri::AppHandle) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    // Rust pollt alle 1s den localStorage via evaluate_script
-    tokio::spawn(async move {
-        let js_extract = r#"(function(){
-            try {
-                var raw = localStorage.getItem('id-application-user');
-                if (!raw) return null;
-                var arr = JSON.parse(raw);
-                var obj = Array.isArray(arr) ? arr[0] : arr;
-                if (obj && obj.token && obj.token.length > 10)
-                    return JSON.stringify({token: obj.token, userId: String(obj.userId||'')});
-            } catch(e) {}
-            return null;
-        })()"#;
-
-        tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
-        for _ in 0..120 {
-            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-            let w = match app.get_webview_window("oauth-login") {
-                Some(w) => w,
-                None => break,
-            };
-            let (tx, rx) = std::sync::mpsc::channel::<String>();
-            let _ = w.eval_with_callback(js_extract, move |result| {
-                let _ = tx.send(result);
-            });
-            if let Ok(result) = rx.recv_timeout(std::time::Duration::from_millis(500)) {
-                // result ist JSON-kodierter String, z.B. "\"...\""
-                let unquoted = serde_json::from_str::<serde_json::Value>(&result)
-                    .ok()
-                    .and_then(|v| v.as_str().map(|s| s.to_string()));
-                if let Some(json_str) = unquoted {
-                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&json_str) {
-                        let token = val["token"].as_str().unwrap_or("").to_string();
-                        let user_id = val["userId"].as_str().unwrap_or("").to_string();
-                        if !token.is_empty() {
-                            eprintln!("[oauth] Token gefunden, userId={}", user_id);
-                            let _ = w.close();
-                            // Direkt per eval ins Hauptfenster injizieren
-                            if let Some(main) = app.get_webview_window("main") {
-                                let js = format!(
-                                    "window._oauthLogin && window._oauthLogin({}, {});",
-                                    serde_json::json!(token),
-                                    serde_json::json!(user_id)
-                                );
-                                let _ = main.eval(&js);
-                                // Zusätzlich Event als Fallback
-                                main.emit("oauth_token", serde_json::json!({"token": token, "userId": user_id})).ok();
+    // JavaScript injizieren, der auf localStorage Änderungen hört und Token an Rust sendet
+    let js_bridge = r#"
+        (function() {
+            const originalSetItem = localStorage.setItem;
+            localStorage.setItem = function(key, value) {
+                originalSetItem.call(this, key, value);
+                if (key === 'id-application-user') {
+                    try {
+                        const raw = localStorage.getItem('id-application-user');
+                        if (raw) {
+                            const arr = JSON.parse(raw);
+                            const obj = Array.isArray(arr) ? arr[0] : arr;
+                            if (obj && obj.token && obj.token.length > 10) {
+                                if (window.__TAURI__) {
+                                    window.__TAURI__.invoke('oauth_token_received', {
+                                        token: obj.token,
+                                        userId: String(obj.userId || '')
+                                    }).catch(() => {});
+                                }
                             }
-                            break;
+                        }
+                    } catch(e) {}
+                }
+            };
+            // Auch beim Laden prüfen (falls Token schon vorhanden)
+            setTimeout(() => {
+                try {
+                    const raw = localStorage.getItem('id-application-user');
+                    if (raw) {
+                        const arr = JSON.parse(raw);
+                        const obj = Array.isArray(arr) ? arr[0] : arr;
+                        if (obj && obj.token && obj.token.length > 10) {
+                            if (window.__TAURI__) {
+                                window.__TAURI__.invoke('oauth_token_received', {
+                                    token: obj.token,
+                                    userId: String(obj.userId || '')
+                                }).catch(() => {});
+                            }
                         }
                     }
-                }
-            }
-        }
-    });
+                } catch(e) {}
+            }, 1000);
+        })();
+    "#;
+    let _ = win.eval(js_bridge);
 
     Ok(())
-}
-
-#[tauri::command]
-async fn upload_via_webview(app: tauri::AppHandle, upload_url: String, file_base64: String, mime_type: String) -> Result<(), String> {
-    use base64::Engine;
-    use tauri::WebviewWindowBuilder;
-    use std::sync::{Arc, Mutex};
-
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(&file_base64)
-        .map_err(|e| e.to_string())?;
-    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
-    let mime = if mime_type.is_empty() { "application/octet-stream".to_string() } else { mime_type };
-
-    let result: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
-    let _result_clone = result.clone();
-
-    let js = format!(r#"
-        (async () => {{
-            try {{
-                const b64 = '{}';
-                const mime = '{}';
-                const url = '{}';
-                const bin = atob(b64);
-                const buf = new Uint8Array(bin.length);
-                for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-                const resp = await fetch(url, {{
-                    method: 'PUT',
-                    body: buf,
-                    headers: {{ 'Content-Type': mime }}
-                }});
-                const txt = await resp.text();
-                window.__upload_result = resp.ok ? 'ok' : 'error:HTTP ' + resp.status + ' ' + txt;
-                console.log('[upload-proxy] result:', window.__upload_result);
-            }} catch(e) {{
-                window.__upload_result = 'error:' + e.message;
-                console.error('[upload-proxy] error:', e);
-            }}
-        }})();
-    "#, b64, mime, upload_url);
-
-    let win = WebviewWindowBuilder::new(&app, "upload-proxy", tauri::WebviewUrl::External("https://www.crealitycloud.com".parse().unwrap()))
-        .visible(true)
-        .title("Upload Proxy (Test)")
-        .inner_size(800.0, 600.0)
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    // Warte bis Seite geladen
-    tokio::time::sleep(std::time::Duration::from_secs(4)).await;
-    win.eval(&js).map_err(|e| e.to_string())?;
-
-    // Polling auf window.__upload_result via eval (gibt immer () zurück, ignorieren)
-    // Stattdessen einfach 15s warten und Erfolg annehmen wenn kein Fehler
-    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
-    let _ = win.close();
-    Ok(())
-}
-
-#[tauri::command]
-async fn test_upload() -> Result<String, String> {
-    let test_url = "https://1721003041-sg.rich.my-imcloud.com/upload/027c9bfb1fa4b31dce9ca581891c21d9-603032.png?auth=eB9uoBtvP_rmO_FrX2vLvbxTRJ6BOQeU3-1lDMUe5Kpt2D_zkz7Z5Zw_KxlqOleLrRSYPgE5-g2CSYnFhOe76g";
-    let bytes = vec![0u8; 16];
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36")
-        .build().map_err(|e| e.to_string())?;
-    let resp = client.put(test_url)
-        .header("Content-Type", "image/png")
-        .header("Accept", "*/*")
-        .header("Origin", "https://www.crealitycloud.com")
-        .body(bytes)
-        .send().await.map_err(|e| e.to_string())?;
-    Ok(format!("HTTP {}", resp.status()))
 }
 
 #[tauri::command]
@@ -405,7 +348,6 @@ async fn upload_file(upload_url: String, file_base64: String, mime_type: String)
     } else {
         upload_url.clone()
     };
-    eprintln!("[upload_file] PUT {}", &encoded_url[..encoded_url.len().min(180)]);
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36")
         .redirect(reqwest::redirect::Policy::none())
@@ -421,134 +363,12 @@ async fn upload_file(upload_url: String, file_base64: String, mime_type: String)
         .map_err(|e| e.to_string())?;
     let status = resp.status();
     if status.is_success() {
-        eprintln!("[upload_file] success: {}", status);
         Ok(())
     } else {
         let body = resp.text().await.unwrap_or_default();
-        eprintln!("[upload_file] failed: {} body: {}", status, &body[..body.len().min(200)]);
+        debug_log!("[upload_file] failed: {} body: {}", status, &body[..body.len().min(200)]);
         Err(format!("Upload failed: HTTP {} - {}", status, &body[..body.len().min(500)]))
     }
-}
-
-#[tauri::command]
-async fn upload_via_cos(
-    secret_id: String,
-    secret_key: String,
-    session_token: String,
-    upload_url: String,
-    directory: String,
-    file_name: String,
-    file_base64: String,
-    mime_type: String,
-) -> Result<serde_json::Value, String> {
-    use base64::Engine;
-    use hmac::{Hmac, Mac};
-    use sha1::Sha1;
-
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(&file_base64)
-        .map_err(|e| e.to_string())?;
-
-    let mime = if mime_type.is_empty() { "application/octet-stream".to_string() } else { mime_type };
-
-    // Dateiname mit UUID um Kollisionen zu vermeiden
-    let ext = std::path::Path::new(&file_name)
-        .extension().and_then(|e| e.to_str()).unwrap_or("");
-    let uuid = uuid::Uuid::new_v4().to_string().replace('-', "");
-    let key_name = if directory.is_empty() {
-        format!("{}.{}", uuid, ext)
-    } else {
-        format!("{}/{}.{}", directory.trim_end_matches('/'), uuid, ext)
-    };
-
-    // Tencent COS Signatur (q-sign-algorithm=sha1)
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    let start_time = now - 60;
-    let end_time = now + 3600;
-    let sign_time = format!("{};{}", start_time, end_time);
-
-    let http_method = "put";
-    let uri_path = format!("/{}", key_name);
-    let http_parameters = "";
-    let http_headers = format!("content-type={}&x-cos-security-token={}",
-        urlencoding::encode(&mime),
-        urlencoding::encode(&session_token)
-    );
-    let header_list = "content-type;x-cos-security-token";
-
-    let string_to_sign_key = {
-        type HmacSha1 = Hmac<Sha1>;
-        let mut mac = HmacSha1::new_from_slice(secret_key.as_bytes()).map_err(|e| e.to_string())?;
-        mac.update(sign_time.as_bytes());
-        hex::encode(mac.finalize().into_bytes())
-    };
-
-    let http_string = format!("{}
-{}
-{}
-{}
-",
-        http_method, uri_path, http_parameters, http_headers);
-    let sha1_of_http_string = {
-        use sha1::Digest;
-        hex::encode(sha1::Sha1::digest(http_string.as_bytes()))
-    };
-    let string_to_sign = format!("sha1\n{}\n{}\n",
-        sign_time, sha1_of_http_string);
-    let signature = {
-        type HmacSha1 = Hmac<Sha1>;
-        let mut mac = HmacSha1::new_from_slice(string_to_sign_key.as_bytes()).map_err(|e| e.to_string())?;
-        mac.update(string_to_sign.as_bytes());
-        hex::encode(mac.finalize().into_bytes())
-    };
-
-    let authorization = format!(
-        "q-sign-algorithm=sha1&q-ak={}&q-sign-time={}&q-key-time={}&q-header-list={}&q-url-param-list=&q-signature={}",
-        secret_id, sign_time, sign_time, header_list, signature
-    );
-
-    // Upload-URL aufbauen
-    let base = upload_url.trim_end_matches('/');
-    let put_url = format!("{}/{}", base, key_name);
-    let download_url = format!("{}/{}", base.replace("cos.", "pic."), key_name);
-
-    eprintln!("[cos-upload] PUT {}", &put_url);
-
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36")
-        .build().map_err(|e| e.to_string())?;
-
-    let resp = client.put(&put_url)
-        .header("Authorization", &authorization)
-        .header("x-cos-security-token", &session_token)
-        .header("Content-Type", &mime)
-        .body(bytes)
-        .send().await.map_err(|e| e.to_string())?;
-
-    let status = resp.status();
-    let body = resp.text().await.unwrap_or_default();
-    eprintln!("[cos-upload] response: {} body: {}", status, &body[..body.len().min(200)]);
-
-    if status.is_success() {
-        Ok(serde_json::json!({ "download_url": download_url, "file_key": key_name }))
-    } else {
-        Err(format!("COS upload failed: HTTP {} - {}", status, body))
-    }
-}
-
-#[tauri::command]
-async fn oauth_callback(app: tauri::AppHandle, token: String, user_id: String) -> Result<(), String> {
-    eprintln!("[oauth] token received, user_id={}", user_id);
-    // Login-Fenster schließen
-    if let Some(win) = app.get_webview_window("oauth-login") {
-        let _ = win.close();
-    }
-    // Token ans Hauptfenster emittieren
-    app.emit("oauth_token", serde_json::json!({"token": token, "userId": user_id}))
-        .map_err(|e| e.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -559,7 +379,6 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
-            creality_login,
             im_login,
             get_user_info,
             search_users,
@@ -581,11 +400,8 @@ pub fn run() {
             open_url,
             download_file,
             upload_file,
-            upload_via_webview,
-            upload_via_cos,
-            test_upload,
             oauth_login_window,
-            oauth_callback,
+            oauth_token_received,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

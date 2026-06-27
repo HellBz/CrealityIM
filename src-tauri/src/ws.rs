@@ -9,6 +9,19 @@ const WEBSDKAPPID: u64 = 537048168;
 const PLATFORM: u32 = 7;
 const SDKVERSION: &str = "1.7.3";
 
+// Debug-Only Logging Macro - nur im Debug-Build aktiv
+#[cfg(debug_assertions)]
+macro_rules! debug_log {
+    ($($arg:tt)*) => {
+        eprintln!($($arg)*);
+    };
+}
+
+#[cfg(not(debug_assertions))]
+macro_rules! debug_log {
+    ($($arg:tt)*) => {};
+}
+
 pub struct WsSender(pub Mutex<Option<mpsc::UnboundedSender<String>>>);
 
 fn now_secs() -> u64 {
@@ -62,21 +75,20 @@ pub async fn connect(app: AppHandle, uid: String, sig: String) -> anyhow::Result
         let tls = native_tls::TlsConnector::new().expect("TLS init failed");
         let connector = Connector::NativeTls(tls);
 
-        eprintln!("[ws] connecting...");
+        debug_log!("[ws] connecting...");
         match connect_async_tls_with_config(&url, None, false, Some(connector)).await {
             Ok((ws_stream, _)) => {
-                eprintln!("[ws] connected OK");
+                debug_log!("[ws] connected OK");
                 let (mut write, mut read) = ws_stream.split();
 
                 // wslogin direkt senden — kein Race Condition mit Frontend
                 let login = make_msg("im_open_status.wslogin", &uid, &sig, now_secs(), json!({"State":"Online","is_web_uniapp":0,"InstType":0}));
-                eprintln!("[ws] wslogin full: {}", &login);
                 if let Err(e) = write.send(Message::Binary(login.into_bytes().into())).await {
-                    eprintln!("[ws] wslogin send failed: {}", e);
+                    debug_log!("[ws] wslogin send failed: {}", e);
                     let _ = app_clone.emit("ws_close", e.to_string());
                     return;
                 }
-                eprintln!("[ws] wslogin sent");
+                debug_log!("[ws] wslogin sent");
 
                 // Frontend informieren (für UI-Status)
                 let _ = app_clone.emit("ws_open", ());
@@ -92,7 +104,7 @@ pub async fn connect(app: AppHandle, uid: String, sig: String) -> anyhow::Result
                         let hb = make_msg("heartbeat.alive", &uid_hb, &sig_hb, seq, json!({}));
                         seq += 1;
                         if tx_hb.send(hb).is_err() { break; }
-                        eprintln!("[ws] heartbeat sent");
+                        debug_log!("[ws] heartbeat sent");
                     }
                 });
 
@@ -100,7 +112,7 @@ pub async fn connect(app: AppHandle, uid: String, sig: String) -> anyhow::Result
                 let app_send = app_clone.clone();
                 tokio::spawn(async move {
                     while let Some(msg) = rx.recv().await {
-                        eprintln!("[ws] sending msg len={}", msg.len());
+                        debug_log!("[ws] sending msg len={}", msg.len());
                         if write.send(Message::Binary(msg.into_bytes().into())).await.is_err() {
                             let _ = app_send.emit("ws_close", "send failed");
                             break;
@@ -112,26 +124,26 @@ pub async fn connect(app: AppHandle, uid: String, sig: String) -> anyhow::Result
                 while let Some(item) = read.next().await {
                     match item {
                         Ok(Message::Text(txt)) => {
-                            eprintln!("[ws] recv: {}", &txt[..txt.len().min(200)]);
+                            debug_log!("[ws] recv: {}", &txt[..txt.len().min(200)]);
                             if let Ok(val) = serde_json::from_str::<Value>(&txt) {
                                 let _ = app_clone.emit("ws_message", val);
                             }
                         }
                         Ok(Message::Binary(bin)) => {
                             if let Ok(s) = std::str::from_utf8(&bin) {
-                                eprintln!("[ws] recv bin: {}", &s[..s.len().min(200)]);
+                                debug_log!("[ws] recv bin: {}", &s[..s.len().min(200)]);
                                 if let Ok(val) = serde_json::from_str::<Value>(s) {
                                     let _ = app_clone.emit("ws_message", val);
                                 }
                             }
                         }
                         Ok(Message::Close(_)) => {
-                            eprintln!("[ws] server closed");
+                            debug_log!("[ws] server closed");
                             let _ = app_clone.emit("ws_close", "closed");
                             break;
                         }
                         Err(e) => {
-                            eprintln!("[ws] recv error: {}", e);
+                            debug_log!("[ws] recv error: {}", e);
                             let _ = app_clone.emit("ws_close", e.to_string());
                             break;
                         }
@@ -145,7 +157,7 @@ pub async fn connect(app: AppHandle, uid: String, sig: String) -> anyhow::Result
                 }
             }
             Err(e) => {
-                eprintln!("[ws] connect FAILED: {}", e);
+                debug_log!("[ws] connect FAILED: {}", e);
                 let _ = app.emit("ws_close", e.to_string());
                 if let Some(state) = app.try_state::<WsSender>() {
                     let mut guard = state.0.lock().unwrap();

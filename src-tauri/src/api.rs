@@ -28,23 +28,6 @@ fn base_headers(token: &str, uid: &str) -> reqwest::header::HeaderMap {
     headers
 }
 
-pub async fn creality_login(email: &str, password: &str) -> anyhow::Result<Value> {
-    let client = make_client();
-    let mut hdrs = reqwest::header::HeaderMap::new();
-    hdrs.insert("Content-Type", "application/json".parse().unwrap());
-    hdrs.insert("__cxy_app_id_", "cxy-gen2".parse().unwrap());
-    hdrs.insert("__cxy_platform_", "2".parse().unwrap());
-    hdrs.insert("__cxy_app_ver_", "7.3.10".parse().unwrap());
-    hdrs.insert("__cxy_brand_", "creality".parse().unwrap());
-    let resp = client
-        .post("https://api.crealitycloud.com/api/account/login")
-        .headers(hdrs)
-        .json(&json!({"account": email, "password": password, "type": 1}))
-        .send().await?.json::<Value>().await?;
-    eprintln!("[creality_login] code={}", resp["code"]);
-    Ok(resp)
-}
-
 const CF_CLEARANCE: &str = "0LVaBD6stBfzUNvqWCXAMRQmqSk80LmkGxRhaLZVR4Q-1782061734-1.2.1.1-8Xy6gu3JEeM2NFNuf_T.PLH27niHEbpb5iRrDLFSIsSssvTq61iF5KhZtaB_0449Ye3u1FIFUBS1WI_T8OF33CpoCIN4q6y0p4EsLdt_QZu1KY6jWLk_5uLpMv.KyCeyNrsyV6FTRtPJPdXrrZs_zagysi3wXrj5vErWsZvsEFeGR6y.tQRsQ1HeQrJ60koukky21D5PDIdR.yqZyNkur2JuvzexvJSmARysXjSLwNhQ4d6BGVX297uSmsIRsjBSg.cQhyxjpU2IZcfF0eeWxPuVGwYN2yNGCq7mEHEpiyzEPnVSDZPvfLHroUgJF4l8NDU7cZbnAq7eo4Cb1KmL4Vq63OSf9fmBXF4gkDd...n.ejweJHKLTuFP6EISjjM830BJEmqqsAAceuTnHYjxt2DhS0XKqQoJ7JxkjAOFcXWPhNhdT21LgLDToV1zeA68";
 
 pub async fn im_login(token: &str, user_id: &str, _cookie_str: &str) -> anyhow::Result<Value> {
@@ -84,9 +67,7 @@ pub async fn im_login(token: &str, user_id: &str, _cookie_str: &str) -> anyhow::
         .headers(hdrs)
         .json(&json!({}))
         .send().await?;
-    eprintln!("[im_login] HTTP {}", raw.status());
     let resp: Value = raw.json().await?;
-    eprintln!("[im_login] {}", resp);
     Ok(resp)
 }
 
