@@ -280,51 +280,52 @@ async fn oauth_login_window(app: tauri::AppHandle) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    // JavaScript injizieren, der auf localStorage Änderungen hört und Token an Rust sendet
-    let js_bridge = r#"
-        (function() {
-            const originalSetItem = localStorage.setItem;
-            localStorage.setItem = function(key, value) {
-                originalSetItem.call(this, key, value);
-                if (key === 'id-application-user') {
+    // Polling auf localStorage mit URL-Hash-Workaround (window.__TAURI__ nicht im externen WebView verfügbar)
+    let app_clone = app.clone();
+    tokio::spawn(async move {
+        // Erst nach 5 Sekunden starten (Zeit für Login-Seite laden)
+        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+        // Dann 2 Minuten lang alle 2 Sekunden prüfen
+        for _ in 0..60 {
+            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            // JavaScript ausführen, der Token in URL hash schreibt
+            let js = r#"
+                (function() {
                     try {
                         const raw = localStorage.getItem('id-application-user');
                         if (raw) {
                             const arr = JSON.parse(raw);
                             const obj = Array.isArray(arr) ? arr[0] : arr;
                             if (obj && obj.token && obj.token.length > 10) {
-                                if (window.__TAURI__) {
-                                    window.__TAURI__.invoke('oauth_token_received', {
-                                        token: obj.token,
-                                        userId: String(obj.userId || '')
-                                    }).catch(() => {});
-                                }
+                                window.location.hash = 'OAUTH_TOKEN:' + encodeURIComponent(JSON.stringify({token: obj.token, userId: String(obj.userId || '')}));
                             }
                         }
                     } catch(e) {}
-                }
-            };
-            // Auch beim Laden prüfen (falls Token schon vorhanden)
-            setTimeout(() => {
-                try {
-                    const raw = localStorage.getItem('id-application-user');
-                    if (raw) {
-                        const arr = JSON.parse(raw);
-                        const obj = Array.isArray(arr) ? arr[0] : arr;
-                        if (obj && obj.token && obj.token.length > 10) {
-                            if (window.__TAURI__) {
-                                window.__TAURI__.invoke('oauth_token_received', {
-                                    token: obj.token,
-                                    userId: String(obj.userId || '')
-                                }).catch(() => {});
+                })();
+            "#;
+            let _ = win.eval(js);
+            // URL hash lesen
+            if let Ok(url) = win.url() {
+                let url_str = url.to_string();
+                if let Some(hash_pos) = url_str.find("#OAUTH_TOKEN:") {
+                    let hash = &url_str[hash_pos + 13..];
+                    if let Ok(json_str) = urlencoding::decode(hash) {
+                        if let Ok(data) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                            if let (Some(token), Some(user_id)) = (data.get("token").and_then(|t| t.as_str()), data.get("userId").and_then(|u| u.as_str())) {
+                                debug_log!("[oauth] Token extracted from hash, userId={}", user_id);
+                                let _ = oauth_token_received(app_clone.clone(), token.to_string(), user_id.to_string()).await;
+                                break;
                             }
                         }
                     }
-                } catch(e) {}
-            }, 1000);
-        })();
-    "#;
-    let _ = win.eval(js_bridge);
+                }
+            }
+        }
+        // Fenster schließen nach Timeout
+        if let Some(w) = app_clone.get_webview_window("oauth-login") {
+            let _ = w.close();
+        }
+    });
 
     Ok(())
 }
