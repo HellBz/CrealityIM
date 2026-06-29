@@ -166,6 +166,37 @@ pub async fn send_message(token: &str, uid: &str, _sig: &str, body: Value) -> an
     Ok(resp)
 }
 
+pub async fn send_check(token: &str, uid: &str, other_uid: &str) -> anyhow::Result<Value> {
+    let client = make_client();
+    let other_id: i64 = other_uid.parse().unwrap_or(0);
+    let resp = client
+        .post("https://www.crealitycloud.com/api/rest/im/msg/sendCheck")
+        .headers(base_headers(token, uid))
+        .json(&serde_json::json!({"otherUserId": other_id}))
+        .send().await?
+        .json::<Value>().await?;
+    Ok(resp)
+}
+
+pub async fn submit_report(token: &str, my_uid: &str, target_uid: &str, desc: &str) -> anyhow::Result<Value> {
+    let client = make_client();
+    let hdrs = base_headers(token, my_uid);
+    let resp = client
+        .post("https://www.crealitycloud.com/api/cxy/v2/report/submitReport")
+        .headers(hdrs)
+        .json(&json!({
+            "objType": 2,
+            "contentType": 8,
+            "contentObjId": target_uid,
+            "reportDesc": desc,
+            "reportReason": "Others",
+            "pictures": []
+        }))
+        .send().await?
+        .json::<Value>().await?;
+    Ok(resp)
+}
+
 pub async fn get_latest_browse_record(token: &str, my_uid: &str, other_uid: &str) -> anyhow::Result<Value> {
     let client = make_client();
     let hdrs = base_headers(token, my_uid);

@@ -182,6 +182,16 @@ async fn get_latest_browse_record(token: String, my_uid: String, other_uid: Stri
 }
 
 #[tauri::command]
+async fn send_check(token: String, uid: String, other_uid: String) -> Result<Value, String> {
+    api::send_check(&token, &uid, &other_uid).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn submit_report(token: String, uid: String, target_uid: String, desc: String) -> Result<Value, String> {
+    api::submit_report(&token, &uid, &target_uid, &desc).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn connect_ws(app: tauri::AppHandle, uid: String, sig: String) -> Result<(), String> {
     ws::connect(app, uid, sig).await.map_err(|e| e.to_string())
 }
@@ -388,6 +398,7 @@ pub fn run() {
             get_roam_messages,
             send_message,
             get_latest_browse_record,
+            send_check,
             connect_ws,
             save_credentials,
             load_credentials,
@@ -401,6 +412,7 @@ pub fn run() {
             open_url,
             download_file,
             upload_file,
+            submit_report,
             oauth_login_window,
             oauth_token_received,
         ])

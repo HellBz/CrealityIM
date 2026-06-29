@@ -1,6 +1,6 @@
 {
   "name": "creality-im",
-  "version": "0.2.0",
+  "version": "0.3.5",
   "scripts": {
     "tauri": "tauri",
     "prebuild": "tauri icon src-tauri/icons/icon.png",

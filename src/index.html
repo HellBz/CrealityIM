@@ -60,11 +60,12 @@
   .contact-item.active { background:var(--greendim); border-left:2px solid var(--green); }
   .c-avatar { width:40px; height:40px; border-radius:50%; background:var(--bg3); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:16px; overflow:hidden; }
   .c-avatar img { width:40px; height:40px; border-radius:50%; object-fit:cover; }
-  .c-info { flex:1; min-width:0; }
-  .c-name { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .c-preview { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
-  .c-meta { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
-  .c-time { font-size:10px; color:var(--muted2); }
+  .c-info { flex:1; min-width:0; display:grid; grid-template-columns:1fr auto; grid-template-rows:auto auto; gap:0 6px; }
+  .c-name { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; grid-column:1; grid-row:1; align-self:center; }
+  .c-time-wrap { grid-column:2; grid-row:1; align-self:center; position:relative; display:flex; align-items:center; justify-content:flex-end; }
+  .c-time { font-size:10px; color:var(--muted2); white-space:nowrap; }
+  .c-preview { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; grid-column:1; grid-row:2; align-self:center; }
+  .c-meta { grid-column:2; grid-row:2; display:flex; align-items:center; justify-content:flex-end; gap:3px; }
   .badge { background:var(--green); color:#fff; border-radius:10px; min-width:18px; height:18px; padding:0 5px; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; }
 
   /* ── Chat ── */
@@ -116,6 +117,13 @@
   #status-bar { padding:3px 14px; background:var(--bg); border-top:1px solid var(--border); font-size:10px; color:var(--muted); display:flex; gap:14px; align-items:center; }
   #ws-status { color:var(--red); } #ws-status.on { color:var(--green); }
   #btn-notify { position: relative; }
+  #session-toast { display:none; position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:9999; background:var(--bg3); border:1px solid var(--red); border-radius:10px; padding:12px 18px; color:var(--text); font-size:13px; flex-direction:column; gap:10px; box-shadow:0 4px 24px rgba(0,0,0,0.4); min-width:320px; max-width:520px; }
+  #session-toast.visible { display:flex; }
+  #session-toast .toast-msg { font-weight:500; text-align:center; }
+  #session-toast .toast-actions { display:flex; gap:8px; justify-content:center; }
+  #session-toast button { padding:6px 16px; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  #session-toast .toast-reconnect { background:var(--green); color:#000; }
+  #session-toast .toast-dismiss { background:var(--bg2); color:var(--muted); }
   #btn-notify .bell-wave { display: none; }
   #btn-notify.ringing .bell-wave { display: inline; }
 
@@ -124,6 +132,68 @@
   #model-dialog.open { display:flex; }
   #model-box { background:var(--bg2); border-radius:14px; width:480px; max-height:600px; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--border); }
   #model-box-header { padding:14px 16px; font-weight:600; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  /* ── Contact Hover Actions ── */
+  .contact-item { position:relative; }
+  .c-status-icons { display:flex; align-items:center; gap:2px; color:var(--muted); }
+  .c-meta-btn { display:none; position:absolute; top:50%; right:0; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; padding:2px 3px; border-radius:4px; align-items:center; justify-content:center; transition:background 0.1s,color 0.1s; line-height:1; }
+  .c-meta-btn:hover { background:var(--bg2); color:var(--text); }
+  .c-meta-btn.active { display:flex !important; color:var(--text); }
+  .c-time-wrap:hover .c-meta-btn { display:flex; }
+  .c-time-wrap:hover .c-time { visibility:hidden; }
+  .c-time-wrap:hover .badge { visibility:hidden; }
+  .contact-actions { display:none; position:absolute; right:14px; top:50%; transform:translateY(-50%); gap:0; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:3px; box-shadow:0 4px 16px rgba(0,0,0,0.4); z-index:200; flex-direction:column; min-width:160px; }
+  .contact-actions.open { display:flex; }
+  .contact-actions button { background:none; border:none; color:var(--text); cursor:pointer; padding:8px 12px; border-radius:5px; display:flex; align-items:center; gap:8px; font-size:12px; font-family:inherit; transition:background 0.1s; white-space:nowrap; width:100%; text-align:left; }
+  .contact-actions button:hover { background:var(--bg2); }
+  .contact-actions button.danger { color:var(--red); }
+  .contact-actions button svg { flex-shrink:0; }
+  /* ── Chat Menu ── */
+  #chat-menu-wrap { position:relative; }
+  #chat-menu-dropdown { display:none; position:absolute; top:32px; right:0; background:var(--bg3); border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.4); min-width:180px; z-index:300; overflow:hidden; }
+  #chat-menu-dropdown.open { display:block; }
+  #chat-menu-dropdown button { display:block; width:100%; padding:10px 16px; background:none; border:none; color:var(--text); font-size:13px; text-align:left; cursor:pointer; font-family:inherit; transition:background 0.1s; }
+  #chat-menu-dropdown button:hover { background:var(--bg2); }
+  #chat-menu-dropdown button.danger { color:var(--red); }
+  /* ── Delete Dialog ── */
+  #delete-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:400; align-items:center; justify-content:center; }
+  #delete-modal.open { display:flex; }
+  #delete-box { background:var(--bg2); border-radius:14px; padding:28px 28px 22px; max-width:360px; width:90%; border:1px solid var(--border); }
+  #delete-box h3 { margin:0 0 10px; font-size:16px; }
+  #delete-box p { font-size:13px; color:var(--muted); margin:0 0 20px; line-height:1.5; }
+  #delete-box .delete-actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+  #delete-box .delete-actions button { padding:8px 16px; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  #btn-delete-cancel { background:var(--bg3); color:var(--text); border:1px solid var(--border) !important; }
+  #btn-delete-only { background:#ef4444; color:#fff; }
+  #btn-delete-and-block { background:#7f1d1d; color:#fff; }
+  /* ── Block Modal ── */
+  #block-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:400; align-items:center; justify-content:center; }
+  #block-modal.open { display:flex; }
+  #block-box { background:var(--bg2); border-radius:14px; padding:28px 28px 22px; max-width:360px; width:90%; border:1px solid var(--border); }
+  #block-box h3 { margin:0 0 14px; font-size:16px; }
+  #block-box .block-info { display:flex; gap:10px; align-items:flex-start; margin-bottom:20px; font-size:13px; color:var(--muted); line-height:1.5; }
+  #block-box .block-info svg { flex-shrink:0; margin-top:1px; color:#f59e0b; }
+  #block-box .block-actions { display:flex; gap:10px; justify-content:flex-end; }
+  #block-box .block-actions button { padding:8px 20px; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  #btn-block-cancel { background:var(--bg3); color:var(--text); border:1px solid var(--border) !important; }
+  #btn-block-confirm { background:#ef4444; color:#fff; }
+  .blocked-badge { display:inline-flex;align-items:center;margin-left:5px;color:#ef4444;flex-shrink:0; }
+  .muted-badge { display:inline-flex;align-items:center;color:var(--muted);flex-shrink:0; }
+  #unblock-bar { display:none;padding:12px 18px;background:var(--bg2);border-top:1px solid var(--border);align-items:center;justify-content:center;gap:12px; }
+  #unblock-bar.visible { display:flex; }
+  #unblock-bar span { font-size:13px;color:var(--muted); }
+  #btn-unblock { padding:8px 20px;background:#ef4444;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit; }
+  #btn-unblock:hover { background:#dc2626; }
+  /* ── Report Dialog ── */
+  #report-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:400; align-items:center; justify-content:center; }
+  #report-modal.open { display:flex; }
+  #report-box { background:var(--bg2); border-radius:14px; padding:28px 28px 22px; max-width:400px; width:90%; border:1px solid var(--border); }
+  #report-box h3 { margin:0 0 18px; font-size:16px; }
+  #report-box label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+  #report-desc { width:100%; padding:8px 10px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:inherit; resize:vertical; min-height:80px; box-sizing:border-box; }
+  #report-box .report-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+  #report-box .report-actions button { padding:8px 20px; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  #btn-report-cancel { background:var(--bg3); color:var(--text); border:1px solid var(--border) !important; }
+  #btn-report-submit { background:var(--green); color:#000; }
   /* ── Link Dialog ── */
   #link-dialog { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:210; align-items:center; justify-content:center; }
   #link-dialog.open { display:flex; }
@@ -192,6 +262,56 @@
   </p>
 </div>
 
+<!-- Delete Dialog -->
+<div id="delete-modal">
+  <div id="delete-box">
+    <h3>Delete Conversation</h3>
+    <p id="delete-modal-text">This will delete the conversation and clear all chat history.</p>
+    <div class="delete-actions">
+      <button id="btn-delete-cancel" onclick="document.getElementById('delete-modal').classList.remove('open')">Cancel</button>
+      <button id="btn-delete-and-block" style="display:none">Block &amp; Delete</button>
+      <button id="btn-delete-only">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Report Modal -->
+<div id="report-modal">
+  <div id="report-box">
+    <h3>Report User</h3>
+    <label>Please describe the problem *</label>
+    <textarea id="report-desc" maxlength="2000" placeholder="Fill in relevant information so that we can make a decision as quickly as possible."></textarea>
+    <div class="report-actions">
+      <button id="btn-report-cancel" onclick="document.getElementById('report-modal').classList.remove('open')">Cancel</button>
+      <button id="btn-report-submit">Submit Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- Block Modal -->
+<div id="block-modal">
+  <div id="block-box">
+    <h3 id="block-modal-title">Confirm Block</h3>
+    <div class="block-info">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-1-5h2v2h-2zm0-8h2v6h-2z"/></svg>
+      <span id="block-modal-text">After blocking, neither party can send messages.</span>
+    </div>
+    <div class="block-actions">
+      <button id="btn-block-cancel" onclick="document.getElementById('block-modal').classList.remove('open')">Cancel</button>
+      <button id="btn-block-confirm">Confirm Block</button>
+    </div>
+  </div>
+</div>
+
+<!-- Session Toast -->
+<div id="session-toast">
+  <span class="toast-msg"></span>
+  <div class="toast-actions">
+    <button class="toast-reconnect" onclick="document.getElementById('session-toast').classList.remove('visible'); connectWS();">Reconnect</button>
+    <button class="toast-dismiss" onclick="document.getElementById('session-toast').classList.remove('visible');">Dismiss</button>
+  </div>
+</div>
+
 <!-- App -->
 <div id="app">
   <div id="sidebar">
@@ -241,7 +361,17 @@
         <div id="chat-header-avatar" class="c-avatar" style="width:36px;height:36px;font-size:14px;flex-shrink:0;"></div>
         <div style="flex:1;">
           <div style="font-weight:600;font-size:14px;" id="chat-header-name"></div>
-          <div style="font-size:11px;color:var(--muted);" id="chat-header-sub"></div>
+          <div style="font-size:11px;color:var(--muted);" id="chat-header-sub"><span id="chat-header-sub-text" title="Open profile" style="cursor:pointer;transition:color 0.15s;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--muted)'" id="chat-header-uid"></span></div>
+        </div>
+        <div id="chat-menu-wrap">
+          <button id="btn-chat-menu" title="More options" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:4px;display:flex;align-items:center;transition:color 0.15s;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--muted)'">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+          </button>
+          <div id="chat-menu-dropdown">
+            <button id="chat-menu-block">Block User</button>
+            <button id="chat-menu-report">Report</button>
+            <button id="chat-menu-clear" class="danger">Clear Chat History</button>
+          </div>
         </div>
         <button id="btn-reload-chat" title="Reload messages" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:4px;display:flex;align-items:center;transition:color 0.15s;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--muted)'" onclick="reloadMessages()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -251,6 +381,10 @@
         </button>
       </div>
       <div id="chat-messages"></div>
+      <div id="unblock-bar">
+        <span>You have blocked this user.</span>
+        <button id="btn-unblock" onclick="unblockUser(activeContact.id, activeContact.name)">Unblock</button>
+      </div>
       <div id="chat-input-area">
         <div id="upload-progress"><div id="upload-progress-bar"></div></div>
         <button id="btn-image-upload" title="Send image" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--muted);flex-shrink:0;display:flex;align-items:center;transition:color 0.15s;" onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--muted)'">
@@ -470,7 +604,7 @@ let myToken = '', myUid = '', myUserSig = '', myA2 = '', myTinyId = '', statusIn
 let contacts = [], activeContact = null, userCache = {}, cacheDirty = false;
 let notificationsOn = true, notifiedMsgs = new Set();
 let wsSeq = Math.floor(Math.random() * 1e7);
-let ws = null, hbTimer = null, reconnectTimer = null, reconnectDelay = 3000;
+let ws = null, hbTimer = null, helloTimer = null, reconnectTimer = null, contactsRefreshTimer = null, reconnectDelay = 3000;
 let pendingUnread = {};
 let msgLastMsgTime = 0, msgLastMsgKey = '', msgComplete = true, msgLoadingMore = false, msgIsPrepend = false;
 
@@ -578,6 +712,7 @@ async function reconnectWS() {
 
 function connectWS() {
   clearInterval(hbTimer);
+  clearInterval(contactsRefreshTimer);
   myA2 = ''; myTinyId = ''; statusInstId = 0;
 
   const doConnect = () => {
@@ -590,6 +725,8 @@ function connectWS() {
       setWsStatus(true, 'Connected, signing in...');
       wsSend('im_open_status.wslogin', {State:'Online', is_web_uniapp:0, InstType:0});
       hbTimer = setInterval(() => wsSend('heartbeat.alive', {}), 25000);
+      helloTimer = setInterval(() => wsSend('im_open_status.wshello', {is_web_uniapp:0}), 300000);
+      contactsRefreshTimer = setInterval(() => loadContacts(), 300000);
     };
     ws.onmessage = e => {
       const txt = e.data instanceof ArrayBuffer ? new TextDecoder().decode(e.data) : e.data;
@@ -599,6 +736,8 @@ function connectWS() {
     ws.onerror = () => {};
     ws.onclose = e => {
       clearInterval(hbTimer);
+      clearInterval(helloTimer);
+      clearInterval(contactsRefreshTimer);
       if (!myToken) return;
       setWsStatus(false, `Disconnected (${e.code}) – reconnecting...`);
       $('btn-reconnect').style.display = 'inline-block';
@@ -800,6 +939,7 @@ function handleWsMsg(data) {
       statusInstId = data.body.InstId || 0;
       setWsStatus(true, 'Signed in ✓');
       loadContacts();
+      wsSend('sns.black_list_get', { From_Account: myUid, StartIndex: 0, MaxLimited: 100, LastSequence: 0 });
       wsSend('openim.getmsg', {Cookie:'',SyncFlag:0,NeedAbstract:1,IsOnlineSync:0,NeedSignaling:1});
     } else {
       setWsStatus(false, 'WS login failed: ' + (data.body?.ErrorInfo || ''));
@@ -807,6 +947,8 @@ function handleWsMsg(data) {
   }
   else if (cmd === 'recentcontact.page_get') {
     renderContactsFromWs(data.body);
+    // Mute-Status für alle C2C-Kontakte abrufen
+    wsSend('openim.get_c2c_peer_mute_notifications', { UpdateSeq: 0 });
     // Zwischengespeicherte Unread-Counts anwenden
     let dirty = false;
     Object.entries(pendingUnread).forEach(([id, count]) => {
@@ -832,6 +974,17 @@ function handleWsMsg(data) {
     if (data.body?.NeedAck) wsSend('im_open_push.msg_push_ack', {SessionData: data.body.SessionData});
     const events = data.body?.EventArray || [];
     events.forEach(ev => {
+      // Mute-Sync Push (SubMsgType 98)
+      (ev.C2cNotifyMsgArray || []).forEach(n => {
+        if (n.SubMsgType === 98 && n.MuteNotificationsSync) {
+          const sync = n.MuteNotificationsSync;
+          (sync.To_Account || []).forEach(id => {
+            if (sync.MuteNotifications === 2) mutedUsers.add(String(id));
+            else mutedUsers.delete(String(id));
+          });
+          displayContacts(contacts);
+        }
+      });
       const msgs = ev.C2cMsgArray || ev.GroupMsgArray || [];
       msgs.forEach(msg => {
         const fromId = String(msg.From_Account || '');
@@ -841,7 +994,7 @@ function handleWsMsg(data) {
         ).join('') || '';
         const isOwn = fromId === String(myUid) || msg.IsSyncMsg === 1;
         const key = `${msg.MsgRandom}-${msg.MsgSeq}`;
-        if (!isOwn && notificationsOn && !notifiedMsgs.has(key)) {
+        if (!isOwn && notificationsOn && !notifiedMsgs.has(key) && !mutedUsers.has(fromId)) {
           notifiedMsgs.add(key);
           if (notifiedMsgs.size > 200) notifiedMsgs.delete(notifiedMsgs.values().next().value);
           invoke('show_notification', { title: fromName, body: text || 'New message' }).catch(()=>{});
@@ -855,8 +1008,17 @@ function handleWsMsg(data) {
           if (!isOwn && (!activeContact || String(activeContact.id) !== peerId)) c.unread = (c.unread || 0) + 1;
           contacts.sort((a,b) => b.time - a.time);
           displayContacts(contacts);
+        } else {
+          // Neuer Kontakt (erster Chat) – zur Liste hinzufügen
+          const newName = isOwn ? (msg.To_AccountNick || peerId) : (msg.From_AccountNick || peerId);
+          const newAvatar = isOwn ? '' : (msg.From_AccountHeadurl || '');
+          const newContact = { id: peerId, name: newName, avatar: newAvatar, preview: text, time: msg.MsgTimeStamp || Math.floor(Date.now()/1000), unread: isOwn ? 0 : 1, type: 'c2c' };
+          contacts.unshift(newContact);
+          if (userCache[peerId] === undefined) userCache[peerId] = { nickName: newName, userAvatar: newAvatar };
+          displayContacts(contacts);
         }
         if (activeContact && String(activeContact.id) === peerId) {
+          if (!isOwn) setChatInputLocked(false);
           loadMessages(activeContact.id, activeContact.type);
         }
       });
@@ -867,10 +1029,37 @@ function handleWsMsg(data) {
     }
   }
   else if (cmd === 'openim.sendmsg') {
-    if (data.head?.retcode === 0) setStatusMsg('Sent ✓');
+    if (data.head?.retcode === 0) {
+      setStatusMsg('Sent ✓');
+      // Kontaktliste neu laden falls neuer Chat (Kontakt noch nicht in Liste)
+      if (activeContact && !contacts.find(x => String(x.id) === String(activeContact.id))) {
+        loadContacts();
+      }
+    }
     else setStatusMsg('Error: ' + data.head?.retstr, true);
   }
+  else if (cmd === 'sns.black_list_get') {
+    if (data.body?.BlackListItem) {
+      data.body.BlackListItem.forEach(item => blockedUsers.add(String(item.To_Account)));
+    }
+  }
+  else if (cmd === 'openim.get_c2c_peer_mute_notifications') {
+    if (data.body?.MuteNotificationsList) {
+      data.body.MuteNotificationsList.forEach(item => {
+        if (item.MuteNotifications === 2) mutedUsers.add(String(item.Peer_Account));
+        else mutedUsers.delete(String(item.Peer_Account));
+      });
+      displayContacts(contacts);
+    }
+  }
+  else if (cmd === 'openim.set_c2c_peer_mute_notifications') { /* handled via push */ }
   else if (cmd === 'heartbeat.alive') { /* ok */ }
+  else if (cmd === 'im_open_status.wslogout') {
+    showSessionToast('⚠ Your account has been logged in on another device.');
+  }
+  else if (cmd === 'im_open_status.stat_forceoffline') {
+    showSessionToast('⚠ Your account has been logged in on another device.');
+  }
 }
 
 // ── Contacts via WS ──
@@ -881,7 +1070,35 @@ function loadContacts() {
   });
 }
 
+function contactsNeedRefresh(oldList, newList, oldPinned, newPinned) {
+  if (oldList.length !== newList.length) return true;
+  const oldPinnedArr = [...oldPinned].sort();
+  const newPinnedArr = [...newPinned].sort();
+  if (oldPinnedArr.length !== newPinnedArr.length) return true;
+  if (oldPinnedArr.some((id, i) => id !== newPinnedArr[i])) return true;
+  return oldList.some((c, i) => {
+    const n = newList[i];
+    return String(c.id) !== String(n.id) ||
+           c.time !== n.time ||
+           c.unread !== n.unread ||
+           c.preview !== n.preview;
+  });
+}
+
 function renderContactsFromWs(body) {
+  const oldContacts = contacts;
+  const oldPinned = new Set(pinnedContacts);
+  const oldContactIds = new Set(oldContacts.map(c => String(c.id)));
+  // Gepinnte Kontakte neu aufbauen (komplett leeren damit Unpin nach Reload greift)
+  pinnedContacts.clear();
+  (body?.TopContactItem||body?.TopSessionItem||[]).forEach(item => {
+    const id = item.To_Account || item.GroupId || item.PeerAccount;
+    if (id) pinnedContacts.add(String(id));
+  });
+  (body?.SessionItem||body?.ContactItem||[]).forEach(item => {
+    const id = item.To_Account || item.GroupId || item.PeerAccount;
+    if (id && item.TopFlags === 1) pinnedContacts.add(String(id));
+  });
   const items = [...(body?.TopContactItem||body?.TopSessionItem||[]), ...(body?.ContactItem||body?.SessionItem||[])];
   // Manuell gestartete Chats (noch kein WS-Eintrag) merken
   const manualContacts = contacts.filter(c => !items.some(i => String(i.To_Account||i.GroupId||i.PeerAccount) === String(c.id)));
@@ -889,6 +1106,7 @@ function renderContactsFromWs(body) {
   items.forEach(item => {
     const id = item.To_Account || item.GroupId || item.PeerAccount;
     if (!id) return;
+    const isNewContact = !oldContactIds.has(String(id));
     const nick = item.NickName || item.GroupName || '';
     const face = item.FaceUrl || item.GroupFaceUrl || '';
     if (nick && !userCache[id]) { userCache[id] = {nickName: nick, userAvatar: face}; cacheDirty = true; }
@@ -903,14 +1121,17 @@ function renderContactsFromWs(body) {
       unread: (() => {
         const serverCount = item.UnreadMsgCount || item.C2CUnreadNum || item.UnreadMsgNum || 0;
         const prev = contacts.find(x => String(x.id) === String(id));
-        return serverCount > 0 ? serverCount : (prev?.unread || 0);
+        const base = serverCount > 0 ? serverCount : (prev?.unread || 0);
+        return (isNewContact && oldContacts.length > 0 && base === 0) ? 1 : base;
       })()
     });
   });
   // Nach letzter Nachricht sortieren, manuell gestartete Chats oben
   contacts.sort((a,b) => b.time - a.time);
   contacts.unshift(...manualContacts);
-  displayContacts(contacts);
+  if (contactsNeedRefresh(oldContacts, contacts, oldPinned, pinnedContacts)) {
+    displayContacts(contacts);
+  }
   if (cacheDirty) persistUserCache();
   contacts.filter(c => c.type === 'c2c' && !userCache[c.id]?.nickName).forEach(c => fetchUserInfo(c.id));
 }
@@ -938,22 +1159,113 @@ async function persistUserCache() {
 function displayContacts(list) {
   const el = $('contact-list');
   if (!list.length) { el.innerHTML = '<div class="loading">No chats</div>'; return; }
-  el.innerHTML = list.map(c => `
+  const sorted = [...list].sort((a, b) => {
+    const aPin = pinnedContacts.has(String(a.id)) ? 1 : 0;
+    const bPin = pinnedContacts.has(String(b.id)) ? 1 : 0;
+    return bPin - aPin;
+  });
+  el.innerHTML = sorted.map(c => `
     <div class="contact-item${activeContact?.id === c.id ? ' active' : ''}" onclick="openChatById('${esc(String(c.id))}')">
       <div class="c-avatar">${avatarHtml(c.avatar, c.name, 40)}</div>
       <div class="c-info">
-        <div class="c-name">${esc(c.name)}</div>
+        <div class="c-name" style="${blockedUsers.has(String(c.id)) ? 'color:#ef4444;' : ''}">${esc(c.name)}</div>
+        <div class="c-time-wrap">
+          <div class="c-time">${fmtTime(c.time)}</div>
+          <button class="c-meta-btn" onclick="event.stopPropagation();toggleContactMenu(this,'${esc(String(c.id))}','${esc(c.name)}',${c.unread > 0})"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+        </div>
         <div class="c-preview">${previewHtml(c.preview)}</div>
+        <div class="c-meta">
+          <div class="c-status-icons">
+            ${pinnedContacts.has(String(c.id)) ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#22c55e"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>' : ''}
+            ${mutedUsers.has(String(c.id)) ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#f59e0b"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>' : ''}
+            ${blockedUsers.has(String(c.id)) ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7"/><line x1="17" y1="17" x2="23" y2="23"/><line x1="23" y1="17" x2="17" y2="23"/></svg>' : ''}
+          </div>
+          ${c.unread > 0 ? `<div class="badge">${c.unread}</div>` : ''}
+        </div>
       </div>
-      <div class="c-meta">
-        <div class="c-time">${fmtTime(c.time)}</div>
-        ${c.unread > 0 ? `<div class="badge">${c.unread}</div>` : ''}
+      <div class="contact-actions" onclick="event.stopPropagation()">
+        <button onclick="contactActionPin('${esc(String(c.id))}','${esc(c.name)}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>${pinnedContacts.has(String(c.id)) ? 'Unpin' : 'Pin to top'}</button>
+        <button onclick="contactActionMute('${esc(String(c.id))}','${esc(c.name)}')">${mutedUsers.has(String(c.id)) ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Unmute' : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>Mute'}</button>
+        <button onclick="contactActionRead('${esc(String(c.id))}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>${c.unread > 0 ? 'Mark as Read' : 'Mark as Unread'}</button>
+        <button class="danger" onclick="contactActionDelete('${esc(String(c.id))}','${esc(c.name)}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>Delete</button>
       </div>
     </div>`).join('');
 }
 window.openChatById = id => {
   const c = contacts.find(x => String(x.id) === String(id));
   if (c) openChat(c);
+};
+
+let _openContactMenu = null;
+window.toggleContactMenu = (btn, id, name, hasUnread) => {
+  const contactItem = btn.closest('.contact-item');
+  const dropdown = contactItem.querySelector('.contact-actions');
+  const isOpen = dropdown.classList.contains('open');
+  if (_openContactMenu && _openContactMenu !== dropdown) {
+    _openContactMenu.classList.remove('open');
+    _openContactMenu.closest('.contact-item')?.querySelector('.c-meta-btn')?.classList.remove('active');
+  }
+  if (isOpen) {
+    dropdown.classList.remove('open');
+    btn.classList.remove('active');
+    _openContactMenu = null;
+  } else {
+    dropdown.classList.add('open');
+    btn.classList.add('active');
+    _openContactMenu = dropdown;
+  }
+};
+document.addEventListener('click', (e) => {
+  if (_openContactMenu && !e.target.closest('.contact-actions') && !e.target.closest('.c-meta-btn')) {
+    _openContactMenu.classList.remove('open');
+    _openContactMenu.closest('.contact-item')?.querySelector('.c-meta-btn')?.classList.remove('active');
+    _openContactMenu = null;
+  }
+});
+
+window.contactActionPin = (id, name) => {
+  const isPinned = pinnedContacts.has(id);
+  const type = (contacts.find(x => String(x.id) === id)?.type === 'group') ? 2 : 1;
+  wsSend('recentcontact.top', { From_Account: myUid, OperationType: isPinned ? 2 : 1, RecentContactItem: [{ Type: type, To_Account: id }] });
+  setStatusMsg(isPinned ? `${name} unpinned.` : `${name} pinned to top.`);
+  setTimeout(() => loadContacts(), 500);
+};
+
+window.contactActionMute = (id, name) => {
+  const isMuted = mutedUsers.has(id);
+  if (isMuted) {
+    wsSend('openim.set_c2c_peer_mute_notifications', { Peer_Account: [id], Mute_Notifications: 0 });
+    mutedUsers.delete(id);
+    setStatusMsg(`${name} unmuted.`);
+  } else {
+    wsSend('openim.set_c2c_peer_mute_notifications', { Peer_Account: [id], Mute_Notifications: 2 });
+    mutedUsers.add(id);
+    setStatusMsg(`${name} muted.`);
+  }
+  displayContacts(contacts);
+};
+
+window.contactActionRead = (id) => {
+  const c = contacts.find(x => String(x.id) === id);
+  if (!c) return;
+  if (c.unread > 0) {
+    wsSend('openim.read_all_unread_msg', { From_Account: myUid, To_Account: id, TimeStamp: 0 });
+    c.unread = 0;
+  } else {
+    c.unread = 1;
+  }
+  displayContacts(contacts);
+};
+
+window.contactActionDelete = (id, name) => {
+  const c = contacts.find(x => String(x.id) === id);
+  if (!c) return;
+  const isBlocked = blockedUsers.has(id);
+  $('delete-modal-text').textContent = `Delete conversation with ${name}? This will also clear all chat history.`;
+  $('btn-delete-and-block').style.display = isBlocked ? 'none' : '';
+  $('btn-delete-only').onclick = () => { activeContact = c; doDeleteContact(false); };
+  $('btn-delete-and-block').onclick = () => { activeContact = c; doDeleteContact(true); };
+  $('delete-modal').classList.add('open');
 };
 
 // ── Nutzersuche ──
@@ -1069,9 +1381,16 @@ function openChat(contact) {
   $('empty-chat').style.display = 'none';
   $('active-chat').style.display = 'flex';
   $('chat-header-name').textContent = contact.name;
-  $('chat-header-sub').textContent = '#' + contact.id;
+  const subText = $('chat-header-sub-text');
+  subText.textContent = '#' + contact.id;
+  subText.onclick = () => openLink('https://www.crealitycloud.com/flowprint/user/' + contact.id + '/');
   $('chat-header-avatar').innerHTML = avatarHtml(contact.avatar, contact.name, 36);
   $('chat-messages').innerHTML = '';
+  if (blockedUsers.has(String(contact.id))) {
+    setChatInputLocked(true, '', true);
+  } else {
+    setChatInputLocked(false);
+  }
   loadMessages(contact.id, contact.type);
 }
 
@@ -1168,6 +1487,110 @@ function recallMsg(msgSeq, msgRandom, msgTs, fromAccount, toAccount, btn) {
   })());
 }
 window.recallMsg = recallMsg;
+
+// ── Block / Mute / Pin / Chat Menu ──
+const blockedUsers = new Set();
+const mutedUsers = new Set();
+const pinnedContacts = new Set();
+
+function updateChatMenu() {
+  const isBlocked = activeContact && blockedUsers.has(String(activeContact.id));
+  $('chat-menu-block').textContent = isBlocked ? 'Unblock User' : 'Block User';
+  $('chat-menu-block').className = isBlocked ? '' : 'danger';
+}
+
+$('btn-chat-menu').onclick = (e) => {
+  e.stopPropagation();
+  $('chat-menu-dropdown').classList.toggle('open');
+  updateChatMenu();
+};
+document.addEventListener('click', () => $('chat-menu-dropdown').classList.remove('open'));
+
+$('chat-menu-block').onclick = () => {
+  $('chat-menu-dropdown').classList.remove('open');
+  if (!activeContact) return;
+  const isBlocked = blockedUsers.has(String(activeContact.id));
+  if (isBlocked) {
+    unblockUser(activeContact.id, activeContact.name);
+  } else {
+    $('block-modal-title').textContent = 'Confirm Block';
+    $('block-modal-text').textContent = `After blocking, neither party can send messages. Block ${activeContact.name}?`;
+    $('btn-block-confirm').textContent = 'Confirm Block';
+    $('btn-block-confirm').style.background = '#ef4444';
+    $('btn-block-confirm').onclick = () => blockUser(activeContact.id, activeContact.name);
+    $('block-modal').classList.add('open');
+  }
+};
+
+$('chat-menu-report').onclick = () => {
+  $('chat-menu-dropdown').classList.remove('open');
+  if (!activeContact) return;
+  $('report-desc').value = '';
+  $('report-modal').classList.add('open');
+};
+
+$('btn-report-submit').onclick = async () => {
+  const desc = $('report-desc').value.trim();
+  if (!desc) { setStatusMsg('Please describe the problem.', true); return; }
+  $('btn-report-submit').disabled = true;
+  $('btn-report-submit').textContent = 'Sending...';
+  try {
+    const res = await invoke('submit_report', {
+      token: myToken, uid: myUid,
+      targetUid: String(activeContact.id),
+      desc
+    });
+    $('report-modal').classList.remove('open');
+    if (res?.code === 0) setStatusMsg('Report submitted. Thank you.');
+    else if (res?.code === 510) setStatusMsg('You have already reported this user.', true);
+    else setStatusMsg('Report failed: ' + (res?.msg || 'Unknown error'), true);
+  } catch(e) {
+    setStatusMsg('Report failed: ' + e, true);
+  } finally {
+    $('btn-report-submit').disabled = false;
+    $('btn-report-submit').textContent = 'Submit Report';
+  }
+};
+
+$('chat-menu-clear').onclick = () => {
+  $('chat-menu-dropdown').classList.remove('open');
+  if (!activeContact) return;
+  wsSend('recentcontact.clear_msg', { From_Account: myUid, To_Account: activeContact.id, Type: 1 });
+  $('chat-messages').innerHTML = '';
+  setStatusMsg('Chat history cleared.');
+};
+
+function doDeleteContact(alsoBlock) {
+  $('delete-modal').classList.remove('open');
+  const id = String(activeContact.id);
+  const type = activeContact.type === 'group' ? 2 : 1;
+  wsSend('recentcontact.batch_delete', { From_Account: myUid, ContactItem: [{ To_Account: id, Type: type }], ClearRamble: 1 });
+  contacts = contacts.filter(c => String(c.id) !== id);
+  if (alsoBlock) {
+    wsSend('sns.black_list_add', { From_Account: myUid, To_Account: [id] });
+    blockedUsers.add(id);
+  }
+  displayContacts(contacts);
+  closeChat();
+  setStatusMsg(alsoBlock ? 'Conversation deleted and user blocked.' : 'Conversation deleted.');
+}
+
+function blockUser(peerId, peerName) {
+  $('block-modal').classList.remove('open');
+  wsSend('sns.black_list_add', { From_Account: myUid, To_Account: [String(peerId)] });
+  blockedUsers.add(String(peerId));
+  setChatInputLocked(true, '', true);
+  displayContacts(contacts);
+  setStatusMsg(`${peerName} blocked.`);
+}
+
+function unblockUser(peerId, peerName) {
+  wsSend('sns.black_list_delete', { From_Account: myUid, To_Account: [String(peerId)] });
+  blockedUsers.delete(String(peerId));
+  setChatInputLocked(false);
+  displayContacts(contacts);
+  setStatusMsg(`${peerName} unblocked.`);
+}
 
 function closeChat() {
   activeContact = null;
@@ -1351,10 +1774,26 @@ function sendChatMessage(content, type, extraData) {
   return { msgSeq, msgRandom, msgTs, msgKey };
 }
 
-function sendText() {
+async function sendText() {
   if (!activeContact) return;
   const text = $('msg-input').value.trim();
   if (!text) return;
+  if (activeContact.type === 'c2c') {
+    try {
+      const r = await invoke('send_check', { token: myToken, uid: myUid, otherUid: String(activeContact.id) });
+      const res = r?.result || r;
+      if (res?.canSend === false) {
+        const reasons = {
+          90011: 'Waiting for reply — you can only send one message until they respond.',
+          90012: 'Daily limit reached — you can only start chats with 5 new users per day (resets tomorrow).',
+        };
+        const msg = reasons[res.code] || 'Cannot send message.';
+        setStatusMsg(msg, true);
+        setChatInputLocked(true, msg);
+        return;
+      }
+    } catch(e) { console.warn('[sendCheck]', e); }
+  }
   const myInfo = userCache[myUid] || {};
   const msgSeq = Math.floor(Math.random()*4294967295);
   const msgRandom = Math.floor(Math.random()*4294967295);
@@ -1505,6 +1944,41 @@ function sendModelCard(m) {
 }
 
 // ── Status & Benachrichtigungen ──
+function showSessionToast(msg) {
+  const toast = $('session-toast');
+  toast.querySelector('.toast-msg').textContent = msg;
+  toast.classList.add('visible');
+}
+
+function setChatInputLocked(locked, reason = '', isBlocked = false) {
+  const input = $('msg-input');
+  const btn = $('btn-send');
+  const unblockBar = $('unblock-bar');
+  const inputArea = $('chat-input-area');
+  if (isBlocked) {
+    inputArea.style.display = 'none';
+    unblockBar.classList.add('visible');
+  } else {
+    inputArea.style.display = '';
+    unblockBar.classList.remove('visible');
+    input.disabled = locked;
+    btn.disabled = locked;
+    btn.style.opacity = locked ? '0.4' : '';
+    input.placeholder = locked ? reason : 'Message...';
+  }
+}
+
+function openProfileOf(uid) {
+  if (!uid) { console.warn('[openProfileOf] uid is empty'); return; }
+  const url = 'https://www.crealitycloud.com/flowprint/user/' + String(uid) + '/';
+  console.log('[openProfileOf] Opening:', url);
+  invoke('open_url', { url }).catch(e => {
+    console.warn('[openProfileOf] invoke failed, fallback:', e);
+    window.open(url, '_blank');
+  });
+}
+window.openProfileOf = openProfileOf;
+
 function setStatus(state) {
   wsSend('im_open_status.set_state', {State: state});
   $('my-status').className = state==='Away'?'away':state==='Invisible'?'invisible':'';
@@ -1651,6 +2125,7 @@ $('btn-logout').onclick = async () => {
   await invoke('delete_credentials').catch(()=>{});
   myToken=''; myUid=''; myUserSig=''; myA2=''; myTinyId='';
   contacts=[]; activeContact=null; userCache={}; cacheDirty=false;
+  clearInterval(contactsRefreshTimer);
   $('app').style.display='none';
   $('status-bar').style.display='none';
   $('login-screen').style.display='flex';

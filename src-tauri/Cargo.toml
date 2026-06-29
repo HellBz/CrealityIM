@@ -1,6 +1,6 @@
 [package]
 name = "creality-im"
-version = "0.2.0"
+version = "0.3.5"
 description = "Creality Cloud IM Client"
 authors = ["HellBz3D"]
 edition = "2021"
