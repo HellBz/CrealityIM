@@ -135,13 +135,16 @@
   /* ── Contact Hover Actions ── */
   .contact-item { position:relative; }
   .c-status-icons { display:flex; align-items:center; gap:2px; color:var(--muted); }
-  .c-meta-btn { display:none; position:absolute; top:50%; right:0; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; padding:2px 3px; border-radius:4px; align-items:center; justify-content:center; transition:background 0.1s,color 0.1s; line-height:1; }
+  .c-meta-btn { display:none; position:relative; background:none; border:none; color:var(--muted); cursor:pointer; padding:2px 3px; border-radius:4px; align-items:center; justify-content:center; transition:background 0.1s,color 0.1s; line-height:1; flex-shrink:0; }
   .c-meta-btn:hover { background:var(--bg2); color:var(--text); }
   .c-meta-btn.active { display:flex !important; color:var(--text); }
   .c-time-wrap:hover .c-meta-btn { display:flex; }
   .c-time-wrap:hover .c-time { visibility:hidden; }
   .c-time-wrap:hover .badge { visibility:hidden; }
-  .contact-actions { display:none; position:absolute; right:14px; top:50%; transform:translateY(-50%); gap:0; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:3px; box-shadow:0 4px 16px rgba(0,0,0,0.4); z-index:200; flex-direction:column; min-width:160px; }
+  .c-time-wrap:has(.c-meta-btn.active) .c-time { visibility:hidden; }
+  .c-time-wrap:has(.c-meta-btn.active) .badge { visibility:hidden; }
+  .c-time-wrap:has(.c-meta-btn.active) .c-meta-btn { display:flex; }
+  .contact-actions { display:none; position:fixed; gap:0; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:3px; box-shadow:0 4px 16px rgba(0,0,0,0.4); z-index:200; flex-direction:column; min-width:160px; }
   .contact-actions.open { display:flex; }
   .contact-actions button { background:none; border:none; color:var(--text); cursor:pointer; padding:8px 12px; border-radius:5px; display:flex; align-items:center; gap:8px; font-size:12px; font-family:inherit; transition:background 0.1s; white-space:nowrap; width:100%; text-align:left; }
   .contact-actions button:hover { background:var(--bg2); }
@@ -1210,6 +1213,11 @@ window.toggleContactMenu = (btn, id, name, hasUnread) => {
     btn.classList.remove('active');
     _openContactMenu = null;
   } else {
+    const rect = btn.getBoundingClientRect();
+    const dropH = 160;
+    const below = window.innerHeight - rect.bottom > dropH;
+    dropdown.style.top = below ? (rect.bottom + 4) + 'px' : (rect.top - dropH - 4) + 'px';
+    dropdown.style.right = (window.innerWidth - rect.right) + 'px';
     dropdown.classList.add('open');
     btn.classList.add('active');
     _openContactMenu = dropdown;
@@ -1224,11 +1232,13 @@ document.addEventListener('click', (e) => {
 });
 
 window.contactActionPin = (id, name) => {
-  const isPinned = pinnedContacts.has(id);
-  const type = (contacts.find(x => String(x.id) === id)?.type === 'group') ? 2 : 1;
+  const isPinned = pinnedContacts.has(String(id));
+  const type = (contacts.find(x => String(x.id) === String(id))?.type === 'group') ? 2 : 1;
   wsSend('recentcontact.top', { From_Account: myUid, OperationType: isPinned ? 2 : 1, RecentContactItem: [{ Type: type, To_Account: id }] });
+  if (isPinned) pinnedContacts.delete(String(id)); else pinnedContacts.add(String(id));
   setStatusMsg(isPinned ? `${name} unpinned.` : `${name} pinned to top.`);
-  setTimeout(() => loadContacts(), 500);
+  displayContacts(contacts);
+  setTimeout(() => loadContacts(), 1000);
 };
 
 window.contactActionMute = (id, name) => {
