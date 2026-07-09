@@ -653,7 +653,8 @@ function doForwardToSelected() {
   setStatusMsg(`Forwarded to ${targets.length} contact${targets.length !== 1 ? 's' : ''} ✓`);
   setTimeout(() => {
     const saved = activeContact;
-    loadContacts().then(() => { if (saved) activeContact = saved; });
+    loadContacts();
+    activeContact = saved;
   }, 1000);
 };
 getVersion().then(v => { const el = $('app-version'); if (el) el.textContent = 'v' + v; }).catch(() => {});
