@@ -14,7 +14,7 @@
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   html { background:#0a0a0a; color-scheme:dark; }
-  body { font-family:'Inter','Segoe UI',sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; -webkit-user-select:none; overflow:hidden; }
+  body { font-family:'Inter','Segoe UI',sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; -webkit-user-select:none; user-select:none; overflow:hidden; }
 
   /* ── Login ── */
   #login-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; gap:14px; }
@@ -157,6 +157,33 @@
   #chat-menu-dropdown button { display:block; width:100%; padding:10px 16px; background:none; border:none; color:var(--text); font-size:13px; text-align:left; cursor:pointer; font-family:inherit; transition:background 0.1s; }
   #chat-menu-dropdown button:hover { background:var(--bg2); }
   #chat-menu-dropdown button.danger { color:var(--red); }
+  /* ── Forward Dialog ── */
+  #forward-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:400; align-items:center; justify-content:center; }
+  #forward-modal.open { display:flex; }
+  #forward-box { background:var(--bg2); border-radius:14px; width:360px; max-width:96vw; overflow:hidden; border:1px solid var(--border); }
+  #forward-box h3 { margin:0; font-size:15px; padding:16px 16px 12px; border-bottom:1px solid var(--border); }
+  #forward-list { max-height:300px; overflow-y:auto; padding:6px; display:flex; flex-direction:column; gap:2px; }
+  .forward-contact { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:pointer; transition:background .1s; font-size:13px; -webkit-user-select:none; user-select:none; }
+  .forward-contact:hover { background:var(--bg3); }
+  .forward-contact input[type=checkbox] { width:16px; height:16px; accent-color:var(--green); cursor:pointer; flex-shrink:0; }
+  .forward-contact.selected { background:var(--greendim); }
+  #forward-box .fwd-actions { display:flex; gap:8px; justify-content:flex-end; align-items:center; padding:10px 14px; border-top:1px solid var(--border); }
+  #forward-selected-count { font-size:12px; color:var(--muted); margin-right:auto; }
+  #forward-box .fwd-actions button { padding:7px 16px; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  #btn-forward-cancel { background:var(--bg3); color:var(--text); border:1px solid var(--border) !important; }
+  #btn-forward-send { background:var(--green); color:#000; }
+  #btn-forward-send:disabled { opacity:0.4; cursor:not-allowed; }
+  /* ── Paste Confirm Modal ── */
+  #paste-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:400; align-items:center; justify-content:center; }
+  #paste-modal.open { display:flex; }
+  #paste-box { background:var(--bg2); border-radius:14px; padding:22px 22px 18px; max-width:340px; width:90%; border:1px solid var(--border); }
+  #paste-box h3 { margin:0 0 10px; font-size:15px; }
+  #paste-preview { max-width:100%; max-height:180px; border-radius:8px; display:block; margin:0 auto 12px; }
+  #paste-file-info { font-size:12px; color:var(--muted); margin-bottom:14px; text-align:center; }
+  #paste-box .paste-actions { display:flex; gap:8px; justify-content:flex-end; }
+  #paste-box .paste-actions button { padding:8px 16px; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  #btn-paste-cancel { background:var(--bg3); color:var(--text); border:1px solid var(--border) !important; }
+  #btn-paste-send { background:var(--green); color:#fff; }
   /* ── Delete Dialog ── */
   #delete-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:400; align-items:center; justify-content:center; }
   #delete-modal.open { display:flex; }
@@ -205,7 +232,10 @@
   /* ── File Download Dialog ── */
   #file-dialog { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:220; align-items:center; justify-content:center; }
   #file-dialog.open { display:flex; }
-  #file-box { background:var(--bg2); border-radius:14px; width:420px; overflow:hidden; border:1px solid var(--border); }
+  #file-box { background:var(--bg2); border-radius:14px; width:520px; max-width:96vw; overflow:hidden; border:1px solid var(--border); }
+  #file-preview-area { display:none; max-height:320px; overflow:auto; background:var(--bg3); border-top:1px solid var(--border); }
+  #file-preview-area pre { margin:0; padding:12px 14px; font-size:11.5px; font-family:'Consolas','Courier New',monospace; color:var(--text); white-space:pre-wrap; word-break:break-all; line-height:1.5; }
+  #file-preview-area.open { display:block; }
   #file-box-header { padding:14px 16px; font-weight:600; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
   #model-search-row { display:flex; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); }
   #model-search-input { flex:1; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:13px; font-family:inherit; }
@@ -221,6 +251,8 @@
   .loading { text-align:center; color:var(--muted); padding:16px; font-size:12px; }
   ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; } ::-webkit-scrollbar-thumb:hover { background:var(--muted); }
   input, textarea { -webkit-user-select:text; user-select:text; }
+  #file-preview-content { -webkit-user-select:text; user-select:text; cursor:text; }
+  .bubble span, .bubble p { -webkit-user-select:text; user-select:text; cursor:text; }
 
   /* ── Lightbox ── */
   #lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:9999; flex-direction:column; align-items:center; justify-content:center; gap:12px; cursor:zoom-out; }
@@ -263,6 +295,32 @@
     Made with <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--green)" stroke="none"><path d="M12 21 4 13V8l4-4 4 4 4-4 4 4v5l-8 8z"/></svg> by
     <a href="https://www.crealitycloud.com/user-profile/8749025865" target="_blank" style="color:var(--green);text-decoration:none;display:inline-flex;align-items:center;gap:4px;vertical-align:middle;"><img src="avatar.png" style="width:16px;height:16px;border-radius:3px;object-fit:cover;"> HellBz3D</a>
   </p>
+</div>
+
+<!-- Forward Dialog -->
+<div id="forward-modal">
+  <div id="forward-box">
+    <h3>Forward to...</h3>
+    <div id="forward-list"></div>
+    <div class="fwd-actions">
+      <span id="forward-selected-count"></span>
+      <button id="btn-forward-cancel" onclick="document.getElementById('forward-modal').classList.remove('open')">Cancel</button>
+      <button id="btn-forward-send" disabled>Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Paste Confirm Modal -->
+<div id="paste-modal">
+  <div id="paste-box">
+    <h3 id="paste-modal-title">Send file?</h3>
+    <img id="paste-preview" src="" alt="" style="display:none">
+    <div id="paste-file-info"></div>
+    <div class="paste-actions">
+      <button id="btn-paste-cancel" onclick="document.getElementById('paste-modal').classList.remove('open')">Cancel</button>
+      <button id="btn-paste-send">Send</button>
+    </div>
+  </div>
 </div>
 
 <!-- Delete Dialog -->
@@ -423,6 +481,7 @@
     <button id="lightbox-close" onclick="closeLightbox()">✕</button>
     <a id="lightbox-link" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Open in browser</a>
     <button id="lightbox-download" onclick="downloadLightboxImage()" style="display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:inherit;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download image</button>
+    <button id="lightbox-copy" onclick="copyLightboxImage()" style="display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--green);color:var(--green);font-size:13px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:inherit;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy to clipboard</button>
   </div>
 </div>
 
@@ -471,7 +530,9 @@
       <div id="file-name" style="font-size:13px;font-weight:600;color:var(--text);word-break:break-all;"></div>
       <div id="file-size" style="font-size:11px;color:var(--muted);margin-top:4px;"></div>
     </div>
-    <div style="padding:12px 16px;display:flex;gap:8px;justify-content:flex-end;">
+    <div id="file-preview-area"><pre id="file-preview-content"></pre></div>
+    <div style="padding:12px 16px;display:flex;gap:8px;justify-content:flex-end;align-items:center;">
+      <button id="btn-file-preview" onclick="toggleFilePreview()" style="display:none;padding:8px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-family:inherit;font-size:13px;">Preview</button>
       <button onclick="closeFileDialog()" style="padding:8px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;font-family:inherit;font-size:13px;">Cancel</button>
       <button onclick="confirmDownloadFile()" style="padding:8px 14px;background:var(--green);border:none;border-radius:6px;color:#000;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;">Download</button>
     </div>
@@ -482,7 +543,119 @@
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 const { getVersion } = window.__TAURI__.app;
-document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('contextmenu', e => {
+  const inPreview = e.target.closest('#file-preview-content');
+  const bubble = e.target.closest('.bubble');
+  if (inPreview || bubble) {
+    e.preventDefault();
+    showPreviewContextMenu(e.clientX, e.clientY, bubble);
+    return;
+  }
+  e.preventDefault();
+});
+function showPreviewContextMenu(x, y, bubble) {
+  document.getElementById('preview-ctx-menu')?.remove();
+  const menu = document.createElement('div');
+  menu.id = 'preview-ctx-menu';
+  menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.5);min-width:130px;`;
+  function menuBtn(label, fn) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = 'display:block;width:100%;padding:6px 16px;background:none;border:none;color:var(--text);font-size:13px;text-align:left;cursor:pointer;font-family:inherit;border-radius:4px;white-space:nowrap;';
+    b.onmouseenter = () => b.style.background = 'var(--bg2)';
+    b.onmouseleave = () => b.style.background = 'none';
+    b.onclick = () => { menu.remove(); fn(); };
+    return b;
+  }
+  menu.appendChild(menuBtn('Copy', () => document.execCommand('copy')));
+  if (bubble) {
+    menu.appendChild(menuBtn('Forward', () => openForwardDialog(bubble)));
+  }
+  document.body.appendChild(menu);
+  const close = (ev) => { if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('mousedown', close); } };
+  setTimeout(() => document.addEventListener('mousedown', close), 0);
+}
+
+let _forwardMsgBody = null;
+let _forwardSelection = '';
+function updateForwardCount() {
+  const checked = $('forward-list').querySelectorAll('input:checked').length;
+  $('forward-selected-count').textContent = checked ? `${checked} selected` : '';
+  $('btn-forward-send').disabled = checked === 0;
+}
+function openForwardDialog(bubble) {
+  _forwardSelection = window.getSelection()?.toString().trim() || '';
+  try { _forwardMsgBody = JSON.parse(decodeURIComponent(escape(atob(bubble.dataset.msgbody || 'W10=')))); } catch(e) { console.warn('[forward] parse error', e); _forwardMsgBody = []; }
+  const list = $('forward-list');
+  list.innerHTML = '';
+  $('btn-forward-send').disabled = true;
+  $('forward-selected-count').textContent = '';
+  contacts.forEach(c => {
+    if (!c.id) return;
+    const row = document.createElement('div');
+    row.className = 'forward-contact';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.dataset.cid = String(c.id);
+    cb.onchange = updateForwardCount;
+    const av = document.createElement('div');
+    av.innerHTML = avatarHtml(userCache[c.id]?.userAvatar || '', c.name || c.id, 28);
+    const name = document.createElement('span');
+    name.textContent = c.name || c.id;
+    row.appendChild(cb);
+    row.appendChild(av.firstChild || av);
+    row.appendChild(name);
+    row.onclick = (e) => { if (e.target !== cb) cb.checked = !cb.checked; row.classList.toggle('selected', cb.checked); updateForwardCount(); };
+    list.appendChild(row);
+  });
+  $('forward-modal').classList.add('open');
+}
+document.getElementById('btn-forward-send').addEventListener('click', function() {
+  doForwardToSelected();
+});
+function doForwardToSelected() {
+  if (!_forwardMsgBody?.length) return;
+  const firstElem = _forwardMsgBody[0];
+  const msgBody = (_forwardSelection && firstElem?.MsgType === 'TIMTextElem')
+    ? [{ MsgType: 'TIMTextElem', MsgContent: { Text: _forwardSelection } }]
+    : _forwardMsgBody;
+  const targets = [];
+  $('forward-list').querySelectorAll('input:checked').forEach(cb => {
+    const contact = contacts.find(c => String(c.id) === cb.dataset.cid);
+    if (contact) targets.push(contact);
+  });
+  const myInfo = userCache[myUid] || {};
+  targets.forEach(c => {
+    if (!userCache[c.id]) {
+      userCache[c.id] = { nickName: c.name || String(c.id), userAvatar: c.avatar || '' };
+      cacheDirty = true;
+    }
+    const msgSeq = Math.floor(Math.random()*4294967295);
+    const msgRandom = Math.floor(Math.random()*4294967295);
+    const msgTs = Math.floor(Date.now()/1000);
+    const isGroup = c.type === 'group';
+    const payload = {
+      From_Account: myUid,
+      To_Account: isGroup ? undefined : c.id,
+      GroupId: isGroup ? c.id : undefined,
+      MsgSeq: msgSeq, MsgRandom: msgRandom,
+      MsgBody: msgBody,
+      CloudCustomData: '',
+      From_AccountNick: myInfo.nickName || myUid,
+      From_AccountHeadurl: myInfo.userAvatar || '',
+      OfflinePushInfo: { PushFlag: 0, Title: '', Desc: '', Ext: '', ApnsInfo: { BadgeMode: 0 }, AndroidInfo: { OPPOChannelID: '' } },
+      SendMsgControl: [], MsgClientTime: msgTs, IsNeedReadReceipt: 0, SupportMessageExtension: 0
+    };
+    if (!isGroup) delete payload.GroupId; else delete payload.To_Account;
+    wsSend('openim.sendmsg', payload);
+  });
+  $('forward-modal').classList.remove('open');
+  setStatusMsg(`Forwarded to ${targets.length} contact${targets.length !== 1 ? 's' : ''} ✓`);
+  setTimeout(() => {
+    const saved = activeContact;
+    loadContacts().then(() => { if (saved) activeContact = saved; });
+  }, 1000);
+};
 getVersion().then(v => { const el = $('app-version'); if (el) el.textContent = 'v' + v; }).catch(() => {});
 let pendingLinkUrl = '';
 function openLink(url, modelName = '', coverUrl = '') {
@@ -558,6 +731,28 @@ window.openLink = openLink;
 window.confirmOpenLink = confirmOpenLink;
 window.closeLinkDialog = closeLinkDialog;
 window.copyLinkUrl = copyLinkUrl;
+window.copyLightboxImage = async () => {
+  const url = $('lightbox-img').src;
+  if (!url) return;
+  const btn = $('lightbox-copy');
+  try {
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    const pngBlob = blob.type === 'image/png' ? blob : await createImageBitmap(blob).then(bmp => {
+      const canvas = document.createElement('canvas');
+      canvas.width = bmp.width; canvas.height = bmp.height;
+      canvas.getContext('2d').drawImage(bmp, 0, 0);
+      return new Promise(r => canvas.toBlob(r, 'image/png'));
+    });
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+    const orig = btn.innerHTML;
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  } catch (err) {
+    console.error('[copyLightboxImage]', err);
+    setStatusMsg('❌ Copy failed: ' + err.message, true);
+  }
+};
 window.downloadLightboxImage = async () => {
   const url = $('lightbox-img').src;
   if (!url) return;
@@ -583,6 +778,11 @@ window.promptDownloadFile = (url, filename, fileSize) => {
   pendingFileName = filename;
   $('file-name').textContent = filename;
   $('file-size').textContent = fileSize ? 'Size: ' + fileSize : '';
+  $('file-preview-area').classList.remove('open');
+  $('file-preview-content').textContent = '';
+  const previewBtn = $('btn-file-preview');
+  previewBtn.textContent = 'Preview';
+  previewBtn.style.display = isTextFile(filename) ? '' : 'none';
   $('file-dialog').classList.add('open');
 };
 window.confirmDownloadFile = async () => {
@@ -592,8 +792,57 @@ window.confirmDownloadFile = async () => {
 };
 window.closeFileDialog = () => {
   $('file-dialog').classList.remove('open');
+  $('file-preview-area').classList.remove('open');
+  $('file-preview-content').textContent = '';
+  $('btn-file-preview').style.display = 'none';
+  $('btn-file-preview').textContent = 'Preview';
   pendingFileUrl = '';
   pendingFileName = '';
+};
+
+const TEXT_EXTENSIONS = new Set(['txt','json','yaml','yml','cfg','ini','log','xml','csv','md','toml','conf','config','env','sh','bat','ps1','js','ts','css','html','htm','py','rb','rs','go','java','c','cpp','h','hpp','sql']);
+
+function isTextFile(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  return TEXT_EXTENSIONS.has(ext);
+}
+
+window.copyFilePreview = async () => {
+  const text = $('file-preview-content').textContent;
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = $('btn-copy-preview');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = 'Copy all'; }, 2000);
+  } catch(e) { setStatusMsg('Copy failed', true); }
+};
+window.toggleFilePreview = async () => {
+  const area = $('file-preview-area');
+  const btn = $('btn-file-preview');
+  if (area.classList.contains('open')) {
+    area.classList.remove('open');
+    btn.textContent = 'Preview';
+    return;
+  }
+  if ($('file-preview-content').textContent) {
+    area.classList.add('open');
+    btn.textContent = 'Hide Preview';
+    return;
+  }
+  btn.textContent = 'Loading...';
+  try {
+    const resp = await fetch(pendingFileUrl);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const text = await resp.text();
+    $('file-preview-content').textContent = text.length > 20000 ? text.substring(0, 20000) + '\n\n[... truncated ...]' : text;
+    area.classList.add('open');
+    btn.textContent = 'Hide Preview';
+  } catch (err) {
+    $('file-preview-content').textContent = 'Could not load preview: ' + err.message;
+    area.classList.add('open');
+    btn.textContent = 'Hide Preview';
+  }
 };
 
 // ── Tencent IM Konstanten (identisch zur Python-App) ──
@@ -1003,8 +1252,13 @@ function handleWsMsg(data) {
           invoke('show_notification', { title: fromName, body: text || 'New message' }).catch(()=>{});
         }
         // Kontakt lokal aktualisieren ohne Server-Roundtrip (verhindert Unread-Reset)
-        const peerId = isOwn ? String(msg.To_Account || '') : fromId;
+        let peerId = isOwn ? String(msg.To_Account || '') : fromId;
+        // Sicherheitsnetz: peerId darf niemals die eigene UID sein
+        if (peerId === String(myUid) || !peerId) peerId = String(activeContact?.id || '');
+        if (!peerId) return;
         let c = contacts.find(x => String(x.id) === peerId);
+        // Fallback: wenn eigene Nachricht und activeContact auf diesen Peer zeigt
+        if (!c && isOwn && activeContact && String(activeContact.id) === peerId) c = activeContact;
         if (c) {
           c.preview = text || c.preview;
           c.time = msg.MsgTimeStamp || c.time;
@@ -1013,11 +1267,13 @@ function handleWsMsg(data) {
           displayContacts(contacts);
         } else {
           // Neuer Kontakt (erster Chat) – zur Liste hinzufügen
-          const newName = isOwn ? (msg.To_AccountNick || peerId) : (msg.From_AccountNick || peerId);
-          const newAvatar = isOwn ? '' : (msg.From_AccountHeadurl || '');
+          // userCache zuerst prüfen (z.B. von Suchkontakt oder Forward bereits befüllt)
+          const cached = userCache[peerId] || userCache[String(peerId)];
+          const newName = cached?.nickName || (isOwn ? (msg.To_AccountNick || '') : (msg.From_AccountNick || '')) || peerId;
+          const newAvatar = cached?.userAvatar || (isOwn ? '' : (msg.From_AccountHeadurl || ''));
           const newContact = { id: peerId, name: newName, avatar: newAvatar, preview: text, time: msg.MsgTimeStamp || Math.floor(Date.now()/1000), unread: isOwn ? 0 : 1, type: 'c2c' };
           contacts.unshift(newContact);
-          if (userCache[peerId] === undefined) userCache[peerId] = { nickName: newName, userAvatar: newAvatar };
+          if (!cached) userCache[peerId] = { nickName: newName, userAvatar: newAvatar };
           displayContacts(contacts);
         }
         if (activeContact && String(activeContact.id) === peerId) {
@@ -1107,9 +1363,10 @@ function renderContactsFromWs(body) {
   const manualContacts = contacts.filter(c => !items.some(i => String(i.To_Account||i.GroupId||i.PeerAccount) === String(c.id)));
   contacts = [];
   items.forEach(item => {
-    const id = item.To_Account || item.GroupId || item.PeerAccount;
-    if (!id) return;
-    const isNewContact = !oldContactIds.has(String(id));
+    const idRaw = item.To_Account || item.GroupId || item.PeerAccount;
+    if (!idRaw) return;
+    const id = String(idRaw);
+    const isNewContact = !oldContactIds.has(id);
     const nick = item.NickName || item.GroupName || '';
     const face = item.FaceUrl || item.GroupFaceUrl || '';
     if (nick && !userCache[id]) { userCache[id] = {nickName: nick, userAvatar: face}; cacheDirty = true; }
@@ -1355,12 +1612,13 @@ function closeSearch() {
 }
 window.openSearchContact = (userId, name, avatar) => {
   closeSearch();
-  let c = contacts.find(x => String(x.id) === userId);
+  const userIdStr = String(userId);
+  let c = contacts.find(x => String(x.id) === userIdStr);
   if (!c) {
-    c = {id: userId, type:'c2c', name, avatar, preview:'', time:0, unread:0};
+    c = {id: userIdStr, type:'c2c', name, avatar, preview:'', time:0, unread:0};
     contacts.unshift(c);
-    if (!userCache[userId]) {
-      userCache[userId] = {nickName: name, userAvatar: avatar};
+    if (!userCache[userIdStr]) {
+      userCache[userIdStr] = {nickName: name, userAvatar: avatar};
       cacheDirty = true;
     }
   }
@@ -1464,6 +1722,7 @@ function msgRowHtml(msg) {
   const avatar = info.userAvatar || msg.From_AccountHeadurl || '';
   const content = renderMsgContent(msg.MsgBody);
   const msgKey = `${msg.MsgSeq}_${msg.MsgRandom}_${msg.MsgTimeStamp}`;
+  const msgBodyAttr = btoa(unescape(encodeURIComponent(JSON.stringify(msg.MsgBody || []))));
   const recallBtn = isMine
     ? `<button class="msg-del-btn" onclick="recallMsg('${msg.MsgSeq}','${msg.MsgRandom}','${msg.MsgTimeStamp}','${msg.From_Account}','${msg.To_Account}',this)" title="Recall (for everyone)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>`
     : '';
@@ -1472,7 +1731,7 @@ function msgRowHtml(msg) {
     <div class="msg-avatar">${avatarHtml(avatar, senderName, 32)}</div>
     <div class="msg-c">
       ${!isMine && activeContact?.type === 'group' ? `<div class="msg-sender">${esc(senderName)}</div>` : ''}
-      <div class="bubble">${content}</div>
+      <div class="bubble" data-msgbody="${msgBodyAttr}">${content}</div>
       <div class="bubble-time">${fmtTime(msg.MsgTimeStamp)}${recallBtn}${delBtn}</div>
     </div>
   </div>`;
@@ -1750,6 +2009,41 @@ function renderLinkPreviewCard(url) {
 $('btn-send').onclick = sendText;
 $('msg-input').addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendText();} });
 $('msg-input').oninput = function() { this.style.height='auto'; this.style.height=this.scrollHeight+'px'; };
+$('msg-input').addEventListener('paste', async (e) => {
+  if (!activeContact) return;
+  const items = Array.from(e.clipboardData?.items || []);
+  const fileItem = items.find(i => i.kind === 'file');
+  if (!fileItem) return;
+  const file = fileItem.getAsFile();
+  if (!file) return;
+  e.preventDefault();
+  const isImage = fileItem.type.startsWith('image/');
+  showPasteConfirm(file, isImage);
+});
+
+function showPasteConfirm(file, isImage) {
+  const title = isImage ? 'Send image?' : 'Send file?';
+  $('paste-modal-title').textContent = title;
+  const preview = $('paste-preview');
+  const info = $('paste-file-info');
+  if (isImage) {
+    const url = URL.createObjectURL(file);
+    preview.src = url;
+    preview.style.display = 'block';
+    preview.onload = () => URL.revokeObjectURL(url);
+    info.textContent = file.name || 'image';
+  } else {
+    preview.style.display = 'none';
+    preview.src = '';
+    const ext = (file.name.split('.').pop() || 'file').toUpperCase();
+    info.textContent = `📄 ${file.name}  (${ext} · ${formatSize(file.size)})`;
+  }
+  $('btn-paste-send').onclick = async () => {
+    $('paste-modal').classList.remove('open');
+    await doUpload(file, isImage);
+  };
+  $('paste-modal').classList.add('open');
+}
 
 function sendChatMessage(content, type, extraData) {
   if (!activeContact) return;
@@ -1824,7 +2118,7 @@ async function sendText() {
   const delBtn = `<button class="msg-del-btn" onclick="deleteMsg('${msgKey}','${myUid}','${activeContact.id}',this)" title="Delete locally"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
   el.innerHTML += `<div class="msg-row own">
     <div class="msg-avatar">${avatarHtml(myInfo.userAvatar||'', myInfo.nickName||myUid, 32)}</div>
-    <div class="msg-c"><div class="bubble">${bubbleContent}</div><div class="bubble-time">Now${recallBtn}${delBtn}</div></div>
+    <div class="msg-c"><div class="bubble" data-msgbody="${btoa(unescape(encodeURIComponent(JSON.stringify([{MsgType:'TIMTextElem',MsgContent:{Text:text}}]))))}">${bubbleContent}</div><div class="bubble-time">Now${recallBtn}${delBtn}</div></div>
   </div>`;
   el.scrollTop = el.scrollHeight;
   $('msg-input').value = '';
@@ -2055,9 +2349,10 @@ async function doUpload(file, isImage) {
           const viewUrl = toCloudImageUrl(downloadUrl);
           const recallBtn = `<button class="msg-del-btn" onclick="recallMsg('${msgInfo.msgSeq}','${msgInfo.msgRandom}','${msgInfo.msgTs}','${myUid}','${activeContact.id}',this)" title="Recall (for everyone)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>`;
           const delBtn = `<button class="msg-del-btn" onclick="deleteMsg('${msgInfo.msgKey}','${myUid}','${activeContact.id}',this)" title="Delete locally"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
+          const imgMsgBodyAttr = btoa(unescape(encodeURIComponent(JSON.stringify([{MsgType:'TIMImageElem',MsgContent:{UUID:data.body.file_key||'',ImageInfoArray:[{Type:1,URL:downloadUrl}]}}]))));
           el.innerHTML += `<div class="msg-row own">
             <div class="msg-avatar">${avatarHtml(myInfo.userAvatar||'', myInfo.nickName||myUid, 32)}</div>
-            <div class="msg-c"><div class="bubble"><img src="${esc(downloadUrl)}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;cursor:zoom-in" onclick="openLightbox('${esc(viewUrl)}')" onerror="this.alt='🖼'"></div><div class="bubble-time">Now${recallBtn}${delBtn}</div></div>
+            <div class="msg-c"><div class="bubble" data-msgbody="${imgMsgBodyAttr}"><img src="${esc(downloadUrl)}" style="max-width:220px;max-height:220px;border-radius:8px;display:block;cursor:zoom-in" onclick="openLightbox('${esc(viewUrl)}')" onerror="this.alt='🖼'"></div><div class="bubble-time">Now${recallBtn}${delBtn}</div></div>
           </div>`;
           el.scrollTop = el.scrollHeight;
         } else {
@@ -2096,9 +2391,10 @@ async function doUpload(file, isImage) {
           const el = $('chat-messages');
           const recallBtn = `<button class="msg-del-btn" onclick="recallMsg('${msgSeq}','${msgRandom}','${msgTs}','${myUid}','${activeContact.id}',this)" title="Recall (for everyone)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>`;
           const delBtn = `<button class="msg-del-btn" onclick="deleteMsg('${msgKey}','${myUid}','${activeContact.id}',this)" title="Delete locally"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`;
+          const fileMsgBodyAttr = btoa(unescape(encodeURIComponent(JSON.stringify([{MsgType:'TIMFileElem',MsgContent:{Download_Flag:2,Url:downloadUrl,UUID:uuid,FileName:file.name,FileSize:file.size}}]))));
           el.innerHTML += `<div class="msg-row own">
             <div class="msg-avatar">${avatarHtml(myInfo.userAvatar||'', myInfo.nickName||myUid, 32)}</div>
-            <div class="msg-c"><div class="bubble"><div class="model-card" onclick="promptDownloadFile('${esc(downloadUrl)}','${esc(file.name)}','${esc(sizeStr)}')" title="Click to download">
+            <div class="msg-c"><div class="bubble" data-msgbody="${fileMsgBodyAttr}"><div class="model-card" onclick="promptDownloadFile('${esc(downloadUrl)}','${esc(file.name)}','${esc(sizeStr)}')" title="Click to download">
               <div style="width:56px;height:56px;min-width:56px;background:var(--bg3);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);">${iconSvg2}</div>
               <div class="mc-info">
                 <div class="mc-name">${esc(file.name)}</div>
