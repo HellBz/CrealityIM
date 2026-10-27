@@ -4,6 +4,7 @@ version = "0.3.5"
 description = "Creality Cloud IM Client"
 authors = ["HellBz3D"]
 edition = "2021"
+default-run = "creality-im"
 
 [lib]
 name = "creality_im_lib"
