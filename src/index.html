@@ -1193,22 +1193,12 @@ function handleWsMsg(data) {
       setWsStatus(true, 'Signed in ✓');
       loadContacts();
       wsSend('sns.black_list_get', { From_Account: myUid, StartIndex: 0, MaxLimited: 100, LastSequence: 0 });
-      wsSend('openim.getmsg', {Cookie:'',SyncFlag:0,NeedAbstract:1,IsOnlineSync:0,NeedSignaling:1});
+      // Mute-Status für alle C2C-Kontakte abrufen
+      wsSend('openim.get_c2c_peer_mute_notifications', { UpdateSeq: 0 });
+      wsSend('openim.getmsg', {Cookie:'',SyncFlag:0,NeedAbstract:1,IsOnlineSync:0,NeedSignaling:1,NeedCachedMsg:1});
     } else {
       setWsStatus(false, 'WS login failed: ' + (data.body?.ErrorInfo || ''));
     }
-  }
-  else if (cmd === 'recentcontact.page_get') {
-    renderContactsFromWs(data.body);
-    // Mute-Status für alle C2C-Kontakte abrufen
-    wsSend('openim.get_c2c_peer_mute_notifications', { UpdateSeq: 0 });
-    // Zwischengespeicherte Unread-Counts anwenden
-    let dirty = false;
-    Object.entries(pendingUnread).forEach(([id, count]) => {
-      const c = contacts.find(x => String(x.id) === id);
-      if (c) { c.unread = Math.max(c.unread, count); dirty = true; delete pendingUnread[id]; }
-    });
-    if (dirty) displayContacts(contacts);
   }
   else if (cmd === 'openim.getmsg') {
     (data.body?.C2CPairUnreadCount || []).forEach(({From_Account, UnreadCount}) => {
@@ -1322,12 +1312,14 @@ function handleWsMsg(data) {
   }
 }
 
-// ── Contacts via WS ──
-function loadContacts() {
-  wsSend('recentcontact.page_get', {
-    From_Account: myUid, TimeStamp: 0, StartIndex: 0,
-    TopTimeStamp: 0, TopStartIndex: 0, OrderType: 1, MsgAssistFlags: 4, AssistFlags: 15
-  });
+// ── Contacts via REST (wie Original-App: /api/rest/im/msg/contactList) ──
+async function loadContacts() {
+  try {
+    const r = await invoke('get_contact_list', { token: myToken, uid: myUid });
+    renderContactsFromRest(Array.isArray(r?.result) ? r.result : []);
+  } catch(e) {
+    console.error('contactList failed:', e);
+  }
 }
 
 function contactsNeedRefresh(oldList, newList, oldPinned, newPinned) {
@@ -1345,52 +1337,51 @@ function contactsNeedRefresh(oldList, newList, oldPinned, newPinned) {
   });
 }
 
-function renderContactsFromWs(body) {
+function restPreviewText(lm) {
+  if (!lm) return '';
+  const p = lm.payload || {};
+  return previewText([{ MsgType: lm.type, MsgContent: { Text: p.text || '', Data: p.data, Desc: p.desc } }]) || '';
+}
+
+function renderContactsFromRest(items) {
   const oldContacts = contacts;
   const oldPinned = new Set(pinnedContacts);
-  const oldContactIds = new Set(oldContacts.map(c => String(c.id)));
+  const idOf = item => String(item.userProfile?.userID || String(item.conversationID || '').replace(/^(C2C|GROUP)/, ''));
+  // Manuell gestartete Chats (noch kein Server-Eintrag) merken
+  const manualContacts = contacts.filter(c => !items.some(i => idOf(i) === String(c.id)));
   // Gepinnte Kontakte neu aufbauen (komplett leeren damit Unpin nach Reload greift)
   pinnedContacts.clear();
-  (body?.TopContactItem||body?.TopSessionItem||[]).forEach(item => {
-    const id = item.To_Account || item.GroupId || item.PeerAccount;
-    if (id) pinnedContacts.add(String(id));
-  });
-  (body?.SessionItem||body?.ContactItem||[]).forEach(item => {
-    const id = item.To_Account || item.GroupId || item.PeerAccount;
-    if (id && item.TopFlags === 1) pinnedContacts.add(String(id));
-  });
-  const items = [...(body?.TopContactItem||body?.TopSessionItem||[]), ...(body?.ContactItem||body?.SessionItem||[])];
-  // Manuell gestartete Chats (noch kein WS-Eintrag) merken
-  const manualContacts = contacts.filter(c => !items.some(i => String(i.To_Account||i.GroupId||i.PeerAccount) === String(c.id)));
   contacts = [];
   items.forEach(item => {
-    const idRaw = item.To_Account || item.GroupId || item.PeerAccount;
-    if (!idRaw) return;
-    const id = String(idRaw);
-    const isNewContact = !oldContactIds.has(id);
-    const nick = item.NickName || item.GroupName || '';
-    const face = item.FaceUrl || item.GroupFaceUrl || '';
+    const convId = String(item.conversationID || '');
+    const isGroup = item.type === 'GROUP' || convId.startsWith('GROUP');
+    const id = idOf(item);
+    if (!id) return;
+    if (item.isPinned) pinnedContacts.add(id);
+    const nick = item.userProfile?.nick || '';
+    const face = item.userProfile?.avatar || '';
     if (nick && !userCache[id]) { userCache[id] = {nickName: nick, userAvatar: face}; cacheDirty = true; }
     else if (nick && userCache[id] && !userCache[id].nickName) { userCache[id].nickName = nick; userCache[id].userAvatar = face || ''; cacheDirty = true; }
     const cached = userCache[id] || {};
     contacts.push({
-      id, type: item.Type === 2 ? 'group' : 'c2c',
+      id, type: isGroup ? 'group' : 'c2c',
       name: cached.nickName || nick || id,
       avatar: cached.userAvatar || face || '',
-      preview: previewText(item.LastMsg?.MsgBody || item.MsgContent) || localizePreview(item.MsgShow),
-      time: item.MsgTimeStamp || item.LastMsgTime || 0,
-      unread: (() => {
-        const serverCount = item.UnreadMsgCount || item.C2CUnreadNum || item.UnreadMsgNum || 0;
-        const prev = contacts.find(x => String(x.id) === String(id));
-        const base = serverCount > 0 ? serverCount : (prev?.unread || 0);
-        return (isNewContact && oldContacts.length > 0 && base === 0) ? 1 : base;
-      })()
+      preview: restPreviewText(item.lastMessage),
+      time: item.lastMessage?.lastTime || 0,
+      unread: item.unreadCount || 0
     });
+  });
+  // Zwischengespeicherte Unread-Counts anwenden (aus openim.getmsg vor Listenaufbau)
+  let dirty = false;
+  Object.entries(pendingUnread).forEach(([pid, count]) => {
+    const c = contacts.find(x => String(x.id) === pid);
+    if (c) { c.unread = Math.max(c.unread, count); dirty = true; delete pendingUnread[pid]; }
   });
   // Nach letzter Nachricht sortieren, manuell gestartete Chats oben
   contacts.sort((a,b) => b.time - a.time);
   contacts.unshift(...manualContacts);
-  if (contactsNeedRefresh(oldContacts, contacts, oldPinned, pinnedContacts)) {
+  if (dirty || contactsNeedRefresh(oldContacts, contacts, oldPinned, pinnedContacts)) {
     displayContacts(contacts);
   }
   if (cacheDirty) persistUserCache();
@@ -1663,37 +1654,59 @@ function openChat(contact) {
   loadMessages(contact.id, contact.type);
 }
 
-function loadMessages(id, type) {
+// Chat-Verlauf via REST (wie Original-App: /api/rest/im/msg/chatHistory)
+async function loadMessages(id, type) {
   if (type === 'group') {
     wsSend('group.get_group_roam_msg', {GroupId: id, ReqMsgNumber: 40, ReqMsgSeq: 0});
-  } else {
-    const now = Math.floor(Date.now()/1000);
-    wsSend('openim.getroammsg', {
-      Peer_Account: id, MaxCnt: 40, MinTime: 0, MaxTime: now,
-      LastMsgTime: now, LastMsgKey: '', WithRecalledMsg: 1
-    });
+    return;
+  }
+  try {
+    const r = await invoke('get_chat_history', { token: myToken, uid: myUid, otherUserId: String(id), lastMsgKey: '' });
+    renderRestHistory(r?.result, false);
+  } catch(e) {
+    $('chat-messages').innerHTML = `<div style="color:var(--red);padding:16px;font-size:13px;">History error: ${esc(String(e))}</div>`;
   }
 }
 
-function loadMoreMessages() {
+function renderRestHistory(res, prepend = false) {
+  // REST liefert neueste Nachricht zuerst → umdrehen für Chat-Darstellung
+  const msgs = (res?.msgList || []).map(m => ({
+    From_Account: String(m.From_Account ?? ''),
+    To_Account: String(m.To_Account ?? ''),
+    From_AccountNick: m.From_AccountNick || '',
+    From_AccountHeadurl: m.From_AccountHeadurl || '',
+    MsgSeq: m.MsgSeq,
+    MsgRandom: m.MsgRandom,
+    MsgTimeStamp: m.MsgTime,
+    MsgBody: m.MsgBody || [],
+    MsgFlagBits: m.IsRevoked ? 8 : 0,
+    MsgKey: m.MsgKey || ''
+  })).reverse();
+  renderMessages({
+    MsgList: msgs,
+    Complete: res?.complete === 1 ? 1 : 0,
+    MsgKey: res?.lastMsgKey || '',
+    LastMsgTime: msgs.length ? msgs[msgs.length-1].MsgTimeStamp : 0
+  }, prepend);
+}
+
+async function loadMoreMessages() {
   if (!activeContact || activeContact.type === 'group') return;
   if (msgComplete || msgLoadingMore || !msgLastMsgKey) return;
   msgLoadingMore = true;
-  msgIsPrepend = true;
   const el = $('chat-messages');
   const indicator = document.createElement('div');
   indicator.id = 'load-more-indicator';
   indicator.style.cssText = 'text-align:center;padding:8px;color:var(--muted);font-size:11px;';
   indicator.textContent = 'Loading older messages...';
   el.prepend(indicator);
-  wsSend('openim.getroammsg', {
-    Peer_Account: activeContact.id,
-    MaxCnt: 20,
-    LastMsgTime: msgLastMsgTime,
-    MsgKey: msgLastMsgKey,
-    WithRecalledMsg: 1,
-    GetDirection: 0
-  });
+  try {
+    const r = await invoke('get_chat_history', { token: myToken, uid: myUid, otherUserId: String(activeContact.id), lastMsgKey: msgLastMsgKey });
+    renderRestHistory(r?.result, true);
+  } catch(e) {
+    msgLoadingMore = false;
+    document.getElementById('load-more-indicator')?.remove();
+  }
 }
 
 // Scroll-Listener für Infinite Scroll

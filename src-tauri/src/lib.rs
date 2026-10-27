@@ -167,8 +167,13 @@ async fn get_my_models(token: String, uid: String) -> Result<Value, String> {
 }
 
 #[tauri::command]
-async fn get_roam_messages(token: String, uid: String, sig: String, peer: String) -> Result<Value, String> {
-    api::get_roam_messages(&token, &uid, &sig, &peer).await.map_err(|e| e.to_string())
+async fn get_contact_list(token: String, uid: String) -> Result<Value, String> {
+    api::get_contact_list(&token, &uid).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_chat_history(token: String, uid: String, other_user_id: String, last_msg_key: String) -> Result<Value, String> {
+    api::get_chat_history(&token, &uid, &other_user_id, &last_msg_key).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -395,7 +400,8 @@ pub fn run() {
             search_users,
             search_models,
             get_my_models,
-            get_roam_messages,
+            get_contact_list,
+            get_chat_history,
             send_message,
             get_latest_browse_record,
             send_check,

@@ -137,19 +137,27 @@ pub async fn get_my_models(token: &str, uid: &str) -> anyhow::Result<Value> {
     Ok(resp)
 }
 
-pub async fn get_roam_messages(token: &str, uid: &str, _sig: &str, peer: &str) -> anyhow::Result<Value> {
+pub async fn get_contact_list(token: &str, uid: &str) -> anyhow::Result<Value> {
     let client = make_client();
     let resp = client
-        .post("https://www.crealitycloud.com/api/rest/im/msg/getRoamMsg")
+        .post("https://www.crealitycloud.com/api/rest/im/msg/contactList")
         .headers(base_headers(token, uid))
-        .json(&json!({
-            "Peer_Account": peer,
-            "MaxCnt": 20,
-            "MinTime": 0,
-            "MaxTime": 0,
-            "LastMsgTime": 0,
-            "LastMsgKey": 0
-        }))
+        .json(&json!({}))
+        .send().await?
+        .json::<Value>().await?;
+    Ok(resp)
+}
+
+pub async fn get_chat_history(token: &str, uid: &str, other_user_id: &str, last_msg_key: &str) -> anyhow::Result<Value> {
+    let client = make_client();
+    let mut body = json!({"otherUserId": other_user_id});
+    if !last_msg_key.is_empty() {
+        body["lastMsgKey"] = json!(last_msg_key);
+    }
+    let resp = client
+        .post("https://www.crealitycloud.com/api/rest/im/msg/chatHistory")
+        .headers(base_headers(token, uid))
+        .json(&body)
         .send().await?
         .json::<Value>().await?;
     Ok(resp)
