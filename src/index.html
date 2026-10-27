@@ -1269,7 +1269,8 @@ function handleWsMsg(data) {
         }
         if (activeContact && String(activeContact.id) === peerId) {
           if (!isOwn) setChatInputLocked(false);
-          loadMessages(activeContact.id, activeContact.type);
+          // Live-Nachricht direkt anhängen statt REST-Refetch (Roam-Index laggt)
+          appendLiveMessage(msg);
         }
       });
     });
@@ -1637,6 +1638,7 @@ function openChat(contact) {
     });
   }
   msgLastMsgTime = 0; msgLastMsgKey = ''; msgComplete = true; msgLoadingMore = false;
+  liveMsgKeys.clear();
   displayContacts(contacts);
   $('empty-chat').style.display = 'none';
   $('active-chat').style.display = 'flex';
@@ -1717,6 +1719,20 @@ async function loadMoreMessages() {
     if (el.scrollTop < 80) loadMoreMessages();
   });
 })();
+
+let liveMsgKeys = new Set();
+function appendLiveMessage(msg) {
+  const key = msg.MsgSeq != null ? `${msg.MsgSeq}_${msg.MsgRandom}` : null;
+  if (key && liveMsgKeys.has(key)) return;
+  if (key) {
+    liveMsgKeys.add(key);
+    if (liveMsgKeys.size > 500) liveMsgKeys.delete(liveMsgKeys.values().next().value);
+  }
+  const el = $('chat-messages');
+  if (!el) return;
+  el.insertAdjacentHTML('beforeend', msgRowHtml(msg));
+  el.scrollTop = el.scrollHeight;
+}
 
 function msgRowHtml(msg) {
   const isMine = String(msg.From_Account) === String(myUid);
