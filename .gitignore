@@ -18,3 +18,7 @@ Thumbs.db
 tools/standard.js
 tools/standard.readable.js
 tools/extract_cmds.js
+
+# TIM SDK PoC binaries (redistributable, ~10MB+ each)
+tools/timsdk/
+*.apk
